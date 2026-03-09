@@ -1,5 +1,0 @@
-namespace wpt {
-	namespace window {
-
-	}
-}
