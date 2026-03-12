@@ -2,7 +2,7 @@
 #include <sstream>
 #include <iomanip>
 #include "window.h"
-#include "timer.h"
+#include "Timer.h"
 //#include "renderer.h"
 
 Timer timer;
