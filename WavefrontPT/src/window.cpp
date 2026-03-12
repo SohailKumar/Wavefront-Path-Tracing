@@ -1,4 +1,5 @@
 #include "window.h"
+#pragma comment(linker, "/subsystem:windows")
 
 namespace Window{
     //anonymous namespace for variables only accessible in this file
@@ -15,6 +16,43 @@ unsigned int Window::GetHeight() { return _windowHeight; }
 HWND Window::GetHandle() { return _winHandle; }
 bool Window::HasFocus() { return _hasFocus; }
 bool Window::IsMinimized() { return _isMinimized; }
+
+LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg) {
+    case WM_DESTROY:
+        //Quit our program;
+        return 0;
+    case WM_CLOSE:
+        PostQuitMessage(69); // Posts quit message to Message Queue. Returning with code 69.
+        break;
+        //case WM_LBUTTONDOWN:
+        //    const POINTS pt = MAKEPOINTS(lParam);
+        //    std::string windowMsg = "Point: ( " + std::to_string(pt.x) + ", " + std::to_string(pt.y) + " )";
+
+        //    SetWindowText(hWnd, windowMsg);
+        //    break;
+    }
+
+    return DefWindowProc(hWnd, msg, wParam, lParam);
+}
+
+std::optional<int> Window::ProcessMessages() {
+    MSG msg;
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        if (msg.message == WM_QUIT) {
+            return msg.wParam; // return PostQuitMessage()'s exit code
+        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    return std::nullopt;
+}
+
+void Window::SetTitle(const std::wstring& title)
+{
+    SetWindowText(_winHandle, title.c_str());
+}
 
 HRESULT Window::Create(
     HINSTANCE appInstance, 
@@ -99,24 +137,4 @@ HRESULT Window::Create(
 void Window::Quit()
 {
     PostMessage(_winHandle, WM_CLOSE, 0, 0);
-}
-
-LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    switch (msg) {
-    case WM_DESTROY:
-        //Quit our program;
-        return 0;
-    case WM_CLOSE:
-        PostQuitMessage(69); // Posts quit message to Message Queue. Returning with code 69.
-        break;
-    //case WM_LBUTTONDOWN:
-    //    const POINTS pt = MAKEPOINTS(lParam);
-    //    std::string windowMsg = "Point: ( " + std::to_string(pt.x) + ", " + std::to_string(pt.y) + " )";
-
-    //    SetWindowText(hWnd, windowMsg);
-    //    break;
-    }
-
-    return DefWindowProc(hWnd, msg, wParam, lParam);
 }

@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <string>
+#include <optional>
 
 namespace Window
 {
@@ -11,6 +12,7 @@ namespace Window
 	HWND GetHandle();
 	bool HasFocus();
 	bool IsMinimized();
+	void SetTitle(const std::wstring& title);
 
 	//Window-related
 	HRESULT Create(
@@ -22,6 +24,8 @@ namespace Window
 		void (*resizeCallback)());
 	//void UpdateStats(float totalTime);
 	void Quit();
+
+	std::optional<int> ProcessMessages();
 
 	LRESULT ProcessMessage(
 		HWND hWnd,
