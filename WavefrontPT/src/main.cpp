@@ -3,6 +3,7 @@
 #include <iomanip>
 #include "window.h"
 #include "Timer.h"
+#include "Renderer.h"
 //#include "renderer.h"
 
 Timer timer;
@@ -22,13 +23,16 @@ void Update() {
 	std::wostringstream oss{}; // Initialize oss
 	oss << L"Time Elapsed: " << std::setprecision(1) << std::fixed << t << L" sec";
 	Window::SetTitle(oss.str());
+
+    Renderer::FinishFrame();
+    Renderer::ClearBuffer(1, 0, 0);
 }
 
 int WINAPI wWinMain(
-    HINSTANCE hInst, 
-    HINSTANCE hInstPrev, 
-    PWSTR cmdline, 
-    int cmdshow)
+    _In_ HINSTANCE hInst,
+    _In_ HINSTANCE hInstPrev,
+    _In_ PWSTR cmdline,
+    _In_ int cmdshow)
 {
     timer = Timer();
 
@@ -37,10 +41,13 @@ int WINAPI wWinMain(
 
     try {
         Window::Create(hInst, width, height, L"Nami Window Name Here", false, NULL);
+        Renderer::Init(Window::GetHandle());
+
         // Game Loop
         while(true)
         {
             if (const auto exitCode = Window::ProcessMessages()) {
+                Renderer::Destroy();
                 return *exitCode;
             }
             Update();
@@ -48,6 +55,9 @@ int WINAPI wWinMain(
     }
     catch (std::exception& e) {
         MessageBox(nullptr, ToWide(e.what()).c_str(), L"Standard Exception", MB_OK | MB_ICONEXCLAMATION);
+    }
+    catch (...) {
+        MessageBox(nullptr, L"idk", L"Other Exception", MB_OK | MB_ICONEXCLAMATION);
     }
 }
 
