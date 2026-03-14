@@ -24,8 +24,9 @@ void Update() {
 	oss << L"Time Elapsed: " << std::setprecision(1) << std::fixed << t << L" sec";
 	Window::SetTitle(oss.str());
 
-    Renderer::FinishFrame();
     Renderer::ClearBuffer(1, 0, 0);
+    Renderer::DrawTestTriangle();
+    Renderer::FinishFrame();
 }
 
 int WINAPI wWinMain(

@@ -1,9 +1,11 @@
 #include "Renderer.h"
 #include <exception>
+#include <iterator> //for std::size
 
 void Renderer::Init(HWND winHandle) {
-	DXGI_SWAP_CHAIN_DESC sd = {};
 
+	//Fill Swap Chain Descriptor
+	DXGI_SWAP_CHAIN_DESC sd = {};
 	sd.BufferDesc.Width = 0;
 	sd.BufferDesc.Height = 0;
 	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -20,12 +22,17 @@ void Renderer::Init(HWND winHandle) {
 	sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; //TODO: Look into Preset1() and DXGI Flip model: https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/dxgi-flip-model
 	sd.Flags = 0;
 
+	UINT deviceFlags = 0;
+#if defined(_DEBUG)
+	deviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
 	HRESULT hr = S_OK;
 	hr = D3D11CreateDeviceAndSwapChain(
 		NULL,
 		D3D_DRIVER_TYPE_HARDWARE,
 		NULL,
-		0,
+		deviceFlags,
 		NULL,
 		0,
 		D3D11_SDK_VERSION,
@@ -54,6 +61,92 @@ void Renderer::Init(HWND winHandle) {
 void Renderer::ClearBuffer(float red, float green, float blue) {
 	const float color[] = { red, green, blue, 1.0f };
 	Context.Get()->ClearRenderTargetView(RTView.Get(), color);
+}
+
+void Renderer::DrawTestTriangle() {
+
+	//Create Vertex Buffer
+	struct Vertex {
+		float x;
+		float y;
+	};
+
+	const Vertex vertices[] =
+	{
+		{ 0.0f, 0.5f },
+		{ 0.5f, -0.5f },
+		{ -0.5f, -0.5f }
+	};
+
+	Microsoft::WRL::ComPtr<ID3D11Buffer> VertexBuffer;
+	D3D11_BUFFER_DESC bufferDesc = {};
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.CPUAccessFlags = 0u;
+	bufferDesc.MiscFlags = 0u;
+	bufferDesc.ByteWidth = sizeof(vertices);
+	bufferDesc.StructureByteStride = sizeof(Vertex);
+
+	D3D11_SUBRESOURCE_DATA subRData = {};
+	subRData.pSysMem = vertices;
+
+	HRESULT hr = Device->CreateBuffer(&bufferDesc, &subRData, &VertexBuffer);
+	if (FAILED(hr)) { throw std::exception("Create Buffer Failed"); }
+
+	//Set Vertex Buffer
+	const UINT stride = sizeof(Vertex);
+	const UINT offset = 0u;
+	Context->IASetVertexBuffers(0, 1, VertexBuffer.GetAddressOf(), &stride, &offset);
+
+	Microsoft::WRL::ComPtr<ID3DBlob> Blob;
+
+	// Create Pixel Shader
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> PixelShader;
+	hr = D3DReadFileToBlob(L"PixelShader.cso", &Blob);
+	if (FAILED(hr)) { throw std::exception("D3DReadFileToBlob PS Failed"); }
+
+	hr = Device->CreatePixelShader(Blob->GetBufferPointer(), Blob->GetBufferSize(), NULL, &PixelShader);
+	if (FAILED(hr)) { throw std::exception("Create Pixel Shader Failed"); }
+	// Bind PS
+	Context->PSSetShader(PixelShader.Get(), NULL, 0);
+
+	//Create Vertex Shader
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> VertexShader;
+	hr = D3DReadFileToBlob(L"VertexShader.cso", &Blob);
+	if (FAILED(hr)) { throw std::exception("D3DReadFileToBlob VS Failed"); }
+
+	hr = Device->CreateVertexShader(Blob->GetBufferPointer(), Blob->GetBufferSize(), NULL, &VertexShader);
+	if (FAILED(hr)) { throw std::exception("Create Vertex Shader Failed"); }
+	// Bind VS
+	Context->VSSetShader(VertexShader.Get(), NULL, 0);
+
+	//Input Layout
+	Microsoft::WRL::ComPtr<ID3D11InputLayout>  InputLayout;
+	D3D11_INPUT_ELEMENT_DESC inputElementDesc[] =
+	{
+		{"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+	hr = Device->CreateInputLayout(inputElementDesc, std::size(inputElementDesc), Blob->GetBufferPointer(), Blob->GetBufferSize(), &InputLayout);
+	if (FAILED(hr)) { throw std::exception("Create Input Layout Failed"); }
+	Context->IASetInputLayout(InputLayout.Get());
+
+	// Bind RT
+	Context->OMSetRenderTargets(1u, RTView.GetAddressOf(), NULL);
+
+	//Configure Viewport
+	D3D11_VIEWPORT vp;
+	vp.Width = 1280;
+	vp.Height = 720;
+	vp.MinDepth = 0;
+	vp.MaxDepth = 1;
+	vp.TopLeftX = 0;
+	vp.TopLeftY = 0;
+	Context->RSSetViewports(1u, &vp);
+
+	// Set primitive topology to triangle list
+	Context->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	Context->Draw(std::size(vertices), 0u);
 }
 
 void Renderer::Destroy() {
