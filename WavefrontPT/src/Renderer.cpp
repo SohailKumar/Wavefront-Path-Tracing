@@ -1,9 +1,10 @@
 #include "Renderer.h"
 #include <exception>
 #include <iterator> //for std::size
+#include <sstream>
+#include <cuda_runtime.h>
 
 void Renderer::Init(HWND winHandle) {
-
 	//Fill Swap Chain Descriptor
 	DXGI_SWAP_CHAIN_DESC sd = {};
 	sd.BufferDesc.Width = 0;
@@ -11,16 +12,16 @@ void Renderer::Init(HWND winHandle) {
 	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	sd.BufferDesc.RefreshRate.Numerator = 0;
 	sd.BufferDesc.RefreshRate.Denominator = 0;
-	sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
-	sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	//sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+	//sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 	sd.SampleDesc.Count = 1;
 	sd.SampleDesc.Quality = 0;
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	sd.BufferCount = 1;
 	sd.OutputWindow = winHandle;
 	sd.Windowed = TRUE;
-	sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; //TODO: Look into Preset1() and DXGI Flip model: https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/dxgi-flip-model
-	sd.Flags = 0;
+	//sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; //TODO: Look into Preset1() and DXGI Flip model: https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/dxgi-flip-model
+	//sd.Flags = 0;
 
 	UINT deviceFlags = 0;
 #if defined(_DEBUG)
@@ -47,6 +48,20 @@ void Renderer::Init(HWND winHandle) {
 			throw std::exception("D3D11CreateDeviceAndSwapChain Failed");
 		}
 	}
+
+	//==============UNCOMMENT TO CHECK DEVICE==============
+	//Microsoft::WRL::ComPtr<IDXGIDevice> dxgiDevice;
+	//if (SUCCEEDED(Device.As(&dxgiDevice))) {
+	//	// Get the adapter for this device
+	//	Microsoft::WRL::ComPtr<IDXGIAdapter> activeAdapter;
+	//	if (SUCCEEDED(dxgiDevice->GetAdapter(&activeAdapter))) {
+	//		DXGI_ADAPTER_DESC adapterDesc;
+	//		activeAdapter->GetDesc(&adapterDesc);
+	//		std::wstringstream ss{};
+	//		ss << L": " << adapterDesc.Description << L"\n";
+	//		MessageBoxW(NULL, ss.str().c_str(), L"AdapterCurr", MB_OK | MB_ICONINFORMATION);
+	//	}
+	//}
 
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
 	hr = SwapChain->GetBuffer(0, __uuidof(ID3D11Resource), reinterpret_cast<void**>(backBuffer.GetAddressOf()));
@@ -149,6 +164,24 @@ void Renderer::DrawTestTriangle() {
 	Context->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 	Context->Draw(std::size(vertices), 0u);
+}
+
+void Renderer::PrintAllAdapterNames()
+{
+	Microsoft::WRL::ComPtr<IDXGIFactory> factory;
+	CreateDXGIFactory(IID_PPV_ARGS(&factory));
+
+	std::wstringstream ss{};
+	ss << L"Found the following adapters:\n\n";
+
+	Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+	for (UINT i = 0; factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i) {
+		DXGI_ADAPTER_DESC desc;
+		adapter->GetDesc(&desc);
+		ss << i << L": " << desc.Description << L"\n";
+	}
+
+	MessageBoxW(NULL, ss.str().c_str(), L"Adapter List", MB_OK | MB_ICONINFORMATION);
 }
 
 void Renderer::Destroy() {

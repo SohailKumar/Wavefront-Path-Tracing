@@ -18,4 +18,5 @@ namespace Renderer {
 	void FinishFrame();
 	void ClearBuffer(float red, float green, float blue);
 	void DrawTestTriangle();
+	void PrintAllAdapterNames();
 }
