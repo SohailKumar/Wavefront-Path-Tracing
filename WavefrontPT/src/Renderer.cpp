@@ -45,7 +45,7 @@ void Renderer::Init(HWND winHandle) {
 	if (FAILED(hr)) {
 		{
 			throw std::exception("D3D11CreateDeviceAndSwapChain Failed");
-		} 
+		}
 	}
 
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
@@ -73,11 +73,13 @@ void Renderer::DrawTestTriangle() {
 
 	const Vertex vertices[] =
 	{
-		{ 0.0f, 0.5f },
-		{ 0.5f, -0.5f },
-		{ -0.5f, -0.5f }
+		{	-1.0f,	-1.0f	},
+		{	-1.0f,	1.0f	},
+		{	1.0f,	-1.0f	},
+		{	1.0f,	1.0f	}
 	};
 
+	//Populate Vertex Buffer Description
 	Microsoft::WRL::ComPtr<ID3D11Buffer> VertexBuffer;
 	D3D11_BUFFER_DESC bufferDesc = {};
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -135,16 +137,16 @@ void Renderer::DrawTestTriangle() {
 
 	//Configure Viewport
 	D3D11_VIEWPORT vp;
-	vp.Width = 1280;
-	vp.Height = 720;
+	vp.Width = 1270;
+	vp.Height = 710;
 	vp.MinDepth = 0;
 	vp.MaxDepth = 1;
-	vp.TopLeftX = 0;
-	vp.TopLeftY = 0;
+	vp.TopLeftX = 5;
+	vp.TopLeftY = 5;
 	Context->RSSetViewports(1u, &vp);
 
 	// Set primitive topology to triangle list
-	Context->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	Context->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 	Context->Draw(std::size(vertices), 0u);
 }
