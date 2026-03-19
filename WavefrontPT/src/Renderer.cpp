@@ -9,11 +9,8 @@
 static const char g_simpleShaders[] = "cbuffer cbuf \n"
 "{ \n"
 "  float4 g_vQuadRect; \n"
-"  int g_UseCase; \n"
 "} \n"
 "Texture2D g_Texture2D; \n"
-"Texture3D g_Texture3D; \n"
-"TextureCube g_TextureCube; \n"
 "\n"
 "SamplerState samLinear{ \n"
 "    Filter = MIN_MAG_LINEAR_MIP_POINT; \n"
@@ -33,36 +30,13 @@ static const char g_simpleShaders[] = "cbuffer cbuf \n"
 "    \n"
 "    f.Pos = float4( g_vQuadRect.xy + f.Tex * g_vQuadRect.zw, 0, 1);\n"
 "    \n"
-"    if (g_UseCase == 1) { \n"
-"        if (vertexId == 1) f.Tex.z = 0.5f; \n"
-"        else if (vertexId == 2) f.Tex.z = 0.5f; \n"
-"        else if (vertexId == 3) f.Tex.z = 1.f; \n"
-"    } \n"
-"    else if (g_UseCase >= 2) { \n"
-"        f.Tex.xy = f.Tex.xy * 2.f - 1.f; \n"
-"    } \n"
 "    return f;\n"
 "}\n"
 "\n"
 "float4 PS( Fragment f ) : SV_Target\n"
 "{\n"
-"    if (g_UseCase == 0) return g_Texture2D.Sample( samLinear, f.Tex.xy ); "
+"    return g_Texture2D.Sample( samLinear, f.Tex.xy ); "
 "\n"
-"    else if (g_UseCase == 1) return g_Texture3D.Sample( samLinear, f.Tex "
-"); \n"
-"    else if (g_UseCase == 2) return g_TextureCube.Sample( samLinear, "
-"float3(f.Tex.xy, 1.0) ); \n"
-"    else if (g_UseCase == 3) return g_TextureCube.Sample( samLinear, "
-"float3(f.Tex.xy, -1.0) ); \n"
-"    else if (g_UseCase == 4) return g_TextureCube.Sample( samLinear, "
-"float3(1.0, f.Tex.xy) ); \n"
-"    else if (g_UseCase == 5) return g_TextureCube.Sample( samLinear, "
-"float3(-1.0, f.Tex.xy) ); \n"
-"    else if (g_UseCase == 6) return g_TextureCube.Sample( samLinear, "
-"float3(f.Tex.x, 1.0, f.Tex.y) ); \n"
-"    else if (g_UseCase == 7) return g_TextureCube.Sample( samLinear, "
-"float3(f.Tex.x, -1.0, f.Tex.y) ); \n"
-"    else return float4(f.Tex, 1);\n"
 "}\n"
 "\n";
 
@@ -150,8 +124,8 @@ void Renderer::Init(HWND winHandle) {
 
 	//Configure Viewport
 	D3D11_VIEWPORT vp;
-	vp.Width = 720;
-	vp.Height = 720;
+	vp.Width = 1270;
+	vp.Height = 710;
 	vp.MinDepth = 0;
 	vp.MaxDepth = 1;
 	vp.TopLeftX = 5;
@@ -281,8 +255,8 @@ void Renderer::ContinueInit() {
 
 
 void Renderer::InitTextures() {
-	Texture2D.width = 256;
-	Texture2D.height = 256;
+	Texture2D.width = 1280;
+	Texture2D.height = 720;
 
 	D3D11_TEXTURE2D_DESC texture2DDesc = {};
 	texture2DDesc.Width = Texture2D.width;
@@ -322,8 +296,8 @@ void Renderer::CUDASetupStuff()
 }
 
 void Renderer::DrawSceneTexture2D() {
-	Renderer::ClearBuffer(0.5f, 0.5f, 0.6f);
-	float quadRect[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+	Renderer::ClearBuffer(0.1, 0.1f, 0.2f);
+	float quadRect[4] = { -1.0f, -1.0f, 2.0f, 2.0f };
 
 	HRESULT                  hr;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
