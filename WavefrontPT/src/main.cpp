@@ -23,9 +23,10 @@ void Update() {
 	oss << L"Time Elapsed: " << std::setprecision(1) << std::fixed << t << L" sec";
 	Window::SetTitle(oss.str());
 
-    Renderer::ClearBuffer(0.1, 0.0, 0.2);
-    Renderer::DrawTexture();
-    Renderer::FinishFrame();
+    //Renderer::ClearBuffer(0.1, 0.0, 0.2);
+    Renderer::CUDARender();
+
+    //Renderer::FinishFrame();
 }
 
 int WINAPI wWinMain(
@@ -42,10 +43,10 @@ int WINAPI wWinMain(
     try {
         Window::Create(hInst, width, height, L"Nami Window Name Here", false, NULL);
         Renderer::Init(Window::GetHandle());
+
         Renderer::ContinueInit();
         Renderer::InitTextures();
-
-        Renderer::CUDAStuff();
+        Renderer::CUDASetupStuff();
 
         // Game Loop
         while(true)

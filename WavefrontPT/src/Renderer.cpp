@@ -75,6 +75,10 @@ struct ConstantBuffer
 Microsoft::WRL::ComPtr<ID3D11Buffer> g_pConstantBuffer;
 Microsoft::WRL::ComPtr<ID3D11SamplerState> g_pSamplerState;
 
+extern "C"
+{
+	bool cuda_texture_2d(void* surface, size_t width, size_t height, size_t pitch, float t);
+}
 
 void Renderer::Init(HWND winHandle) {
 	//Fill Swap Chain Descriptor
@@ -136,10 +140,8 @@ void Renderer::Init(HWND winHandle) {
 	//}
 
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
-	hr = SwapChain->GetBuffer(0, __uuidof(ID3D11Resource), reinterpret_cast<void**>(backBuffer.GetAddressOf()));
-	if (FAILED(hr)) {
-		throw std::exception("GetBuffer for backBuffer Failed");
-	}
+	hr = SwapChain->GetBuffer(0, __uuidof(ID3D11Resource), (LPVOID*)(backBuffer.GetAddressOf()));
+	if (FAILED(hr)) {throw std::exception("GetBuffer for backBuffer Failed");}
 
 	Device->CreateRenderTargetView(backBuffer.Get(), NULL, RTView.GetAddressOf());
 
@@ -148,53 +150,13 @@ void Renderer::Init(HWND winHandle) {
 
 	//Configure Viewport
 	D3D11_VIEWPORT vp;
-	vp.Width = 1270;
-	vp.Height = 710;
+	vp.Width = 720;
+	vp.Height = 720;
 	vp.MinDepth = 0;
 	vp.MaxDepth = 1;
 	vp.TopLeftX = 5;
 	vp.TopLeftY = 5;
 	Context->RSSetViewports(1u, &vp);
-}
-
-void Renderer::InitTextures() {
-	Texture2D.width = 256;
-	Texture2D.height = 256;
-
-	D3D11_TEXTURE2D_DESC texture2DDesc = {};
-	texture2DDesc.Width = Texture2D.width;
-	texture2DDesc.Height = Texture2D.height;
-	texture2DDesc.MipLevels = 1;
-	texture2DDesc.ArraySize = 1;
-	texture2DDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	texture2DDesc.SampleDesc.Count = 1;
-	texture2DDesc.Usage = D3D11_USAGE_DEFAULT;
-	texture2DDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-
-	if (FAILED(Device->CreateTexture2D(&texture2DDesc, NULL, &Texture2D.pTexture))) {
-		throw std::exception("Creating Texture Failed");
-	}
-
-	if (FAILED(Device->CreateShaderResourceView((Texture2D.pTexture.Get()), NULL, &Texture2D.pSRView))) {
-		throw std::exception("Creating SRV Failed");
-	}
-}
-
-void Renderer::CUDAStuff()
-{
-	cudaError ce = cudaGraphicsD3D11RegisterResource(
-		&Texture2D.cudaResource, Texture2D.pTexture.Get(), cudaGraphicsRegisterFlagsNone);
-	//TIP: Maybe use cudaGraphicsRegisterFlagsSurfaceLoadStore for the flag
-	if (ce == !cudaSuccess) {
-		throw std::exception("CUDA D3D11 Register Resource registration failed");
-	}
-
-	cudaMallocPitch(&Texture2D.cudaLinearMemory,
-		&Texture2D.pitch,
-		g_texture_2d.width * sizeof(float) * 4,
-		g_texture_2d.height);
-
-	cudaMemset(g_texture_2d.cudaLinearMemory, 1, g_texture_2d.pitch * g_texture_2d.height);
 }
 
 void Renderer::ContinueInit() {
@@ -209,7 +171,7 @@ void Renderer::ContinueInit() {
 			NULL,
 			NULL, //TIP: if shader has an include, change this!
 			"VS",
-			"vs_5_0",
+			"vs_4_0",
 			0 /*Flags1*/,
 			0 /*Flags2*/,
 			&shaderBlob,
@@ -239,7 +201,7 @@ void Renderer::ContinueInit() {
 			NULL,
 			NULL, //TIP: if shader has an include, chang ethis!
 			"PS",
-			"ps_5_0",
+			"ps_4_0",
 			0 /*Flags1*/,
 			0 /*Flags2*/,
 			&shaderBlob,
@@ -274,8 +236,8 @@ void Renderer::ContinueInit() {
 		}
 		// Assign the buffer now : nothing in the code will interfere with this
 		// (very simple sample)
-		Context->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
-		Context->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+		Context->VSSetConstantBuffers(0, 1, g_pConstantBuffer.GetAddressOf());
+		Context->PSSetConstantBuffers(0, 1, g_pConstantBuffer.GetAddressOf());
 	}
 
 	// SAMPLER STATE
@@ -314,6 +276,117 @@ void Renderer::ContinueInit() {
 	rasterizerState.AntialiasedLineEnable = false;
 	Device->CreateRasterizerState(&rasterizerState, &g_pRasterState);
 	Context->RSSetState(g_pRasterState.Get());
+}
+
+
+
+void Renderer::InitTextures() {
+	Texture2D.width = 256;
+	Texture2D.height = 256;
+
+	D3D11_TEXTURE2D_DESC texture2DDesc = {};
+	texture2DDesc.Width = Texture2D.width;
+	texture2DDesc.Height = Texture2D.height;
+	texture2DDesc.MipLevels = 1;
+	texture2DDesc.ArraySize = 1;
+	texture2DDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	texture2DDesc.SampleDesc.Count = 1;
+	texture2DDesc.Usage = D3D11_USAGE_DEFAULT;
+	texture2DDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	if (FAILED(Device->CreateTexture2D(&texture2DDesc, NULL, &Texture2D.pTexture))) {
+		throw std::exception("Creating Texture Failed");
+	}
+
+	if (FAILED(Device->CreateShaderResourceView((Texture2D.pTexture.Get()), NULL, &Texture2D.pSRView))) {
+		throw std::exception("Creating SRV Failed");
+	}
+	Context->PSSetShaderResources(0, 1, Texture2D.pSRView.GetAddressOf());
+}
+
+void Renderer::CUDASetupStuff()
+{
+	cudaError_t ce = cudaGraphicsD3D11RegisterResource(
+		&(Texture2D.cudaResource), Texture2D.pTexture.Get(), cudaGraphicsRegisterFlagsNone);
+	//TIP: Maybe use cudaGraphicsRegisterFlagsSurfaceLoadStore for the flag
+	if (ce != cudaSuccess) { throw std::exception("CUDA D3D11 Register Resource registration failed"); }
+
+	ce = cudaMallocPitch(&Texture2D.cudaLinearMemory,
+		&(Texture2D.pitch),
+		Texture2D.width * sizeof(float) * 4,
+		Texture2D.height);
+	if (ce != cudaSuccess) {throw std::exception("CUDA Malloc Pitch failed"); }
+
+	ce = cudaMemset(Texture2D.cudaLinearMemory, 1, Texture2D.pitch * Texture2D.height);
+	if (ce != cudaSuccess) { throw std::exception("CUDA Memset failed");}
+}
+
+void Renderer::DrawSceneTexture2D() {
+	Renderer::ClearBuffer(0.5f, 0.5f, 0.6f);
+	float quadRect[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+
+	HRESULT                  hr;
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	ConstantBuffer* pcb;
+	hr = Context->Map(g_pConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(hr)) {throw std::exception("Context->Map Failed");}
+	pcb = (ConstantBuffer*)mappedResource.pData;
+	{
+		memcpy(pcb->vQuadRect, quadRect, sizeof(float) * 4);
+		pcb->UseCase = 0;
+	}
+	Context->Unmap(g_pConstantBuffer.Get(), 0);
+	Context->Draw(4, 0);
+	SwapChain->Present(1, 0);
+}
+
+void Renderer::CUDARender() {
+	cudaStream_t stream = 0;
+	const int nbResources = 1;
+	cudaGraphicsResource* ppResources[nbResources] = {
+		Texture2D.cudaResource
+	};
+	cudaError_t ce = cudaGraphicsMapResources(nbResources, ppResources, stream);
+	if (ce != cudaSuccess) { throw std::exception("CUDAGraphicsMapResources failed"); }
+	
+	static float t = 0.0f;
+
+	// populate the 2d texture
+	{
+		cudaArray* cuArray;
+		ce = cudaGraphicsSubResourceGetMappedArray(&cuArray, Texture2D.cudaResource, 0, 0);
+		if (ce != cudaSuccess) { throw std::exception("cudaGraphicsSubResourceGetMappedArray failed"); }
+
+		// kick off the kernel and send the staging buffer cudaLinearMemory as an
+		// argument to allow the kernel to write to it
+		cuda_texture_2d(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, t);
+		cudaError_t err = cudaGetLastError();
+		if (err != cudaSuccess) {
+			throw std::exception("Kernel launch error: %s\n");
+		}
+
+		err = cudaDeviceSynchronize();
+		if (err != cudaSuccess) {
+			throw std::exception("Kernel execution error: %s\n");
+		}
+
+		// then we want to copy cudaLinearMemory to the D3D texture, via its mapped
+		// form : cudaArray
+		ce = cudaMemcpy2DToArray(cuArray, // dst array
+			0,
+			0, // offset
+			Texture2D.cudaLinearMemory,
+			Texture2D.pitch, // src
+			Texture2D.width * 4 * sizeof(float),
+			Texture2D.height,       // extent
+			cudaMemcpyDeviceToDevice); // kind
+		if (ce != cudaSuccess) { throw std::exception("cudaMemcpy2DToArray failed"); }
+	}
+	t += 0.1f;
+
+	cudaGraphicsUnmapResources(nbResources, ppResources, stream);
+
+	DrawSceneTexture2D();
 }
 
 void Renderer::ClearBuffer(float red, float green, float blue) {
@@ -396,9 +469,6 @@ void Renderer::DrawTestTriangle() {
 	Context->Draw(std::size(vertices), 0u);
 }
 
-void Renderer::DrawTexture()
-{
-}
 
 void Renderer::PrintAllAdapterNames()
 {

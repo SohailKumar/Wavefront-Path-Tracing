@@ -35,8 +35,10 @@ namespace Renderer {
 	void FinishFrame();
 	void ClearBuffer(float red, float green, float blue);
 	void DrawTestTriangle();
-	void DrawTexture();
+
 	void PrintAllAdapterNames();
 	void InitTextures();
-	void CUDAStuff();
+	void CUDASetupStuff();
+	void CUDARender();
+	void DrawSceneTexture2D();
 };

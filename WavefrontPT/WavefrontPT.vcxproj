@@ -97,6 +97,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="src\kernel.cu" />
+    <CudaCompile Include="src\texture_2d.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\imgui\imgui.cpp" />
