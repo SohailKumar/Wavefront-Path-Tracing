@@ -4,7 +4,6 @@
 #include "window.h"
 #include "Timer.h"
 #include "Renderer.h"
-//#include "renderer.h"
 
 Timer timer;
 
@@ -24,8 +23,8 @@ void Update() {
 	oss << L"Time Elapsed: " << std::setprecision(1) << std::fixed << t << L" sec";
 	Window::SetTitle(oss.str());
 
-    Renderer::ClearBuffer(1, 0, 0);
-    Renderer::DrawTestTriangle();
+    Renderer::ClearBuffer(0.1, 0.0, 0.2);
+    Renderer::DrawTexture();
     Renderer::FinishFrame();
 }
 
@@ -43,6 +42,10 @@ int WINAPI wWinMain(
     try {
         Window::Create(hInst, width, height, L"Nami Window Name Here", false, NULL);
         Renderer::Init(Window::GetHandle());
+        Renderer::ContinueInit();
+        Renderer::InitTextures();
+
+        Renderer::CUDAStuff();
 
         // Game Loop
         while(true)

@@ -2,7 +2,79 @@
 #include <exception>
 #include <iterator> //for std::size
 #include <sstream>
-#include <cuda_runtime.h>
+
+//
+// Vertex and Pixel shaders here : VS() & PS()
+//
+static const char g_simpleShaders[] = "cbuffer cbuf \n"
+"{ \n"
+"  float4 g_vQuadRect; \n"
+"  int g_UseCase; \n"
+"} \n"
+"Texture2D g_Texture2D; \n"
+"Texture3D g_Texture3D; \n"
+"TextureCube g_TextureCube; \n"
+"\n"
+"SamplerState samLinear{ \n"
+"    Filter = MIN_MAG_LINEAR_MIP_POINT; \n"
+"};\n"
+"\n"
+"struct Fragment{ \n"
+"    float4 Pos : SV_POSITION;\n"
+"    float3 Tex : TEXCOORD0; };\n"
+"\n"
+"Fragment VS( uint vertexId : SV_VertexID )\n"
+"{\n"
+"    Fragment f;\n"
+"    f.Tex = float3( 0.f, 0.f, 0.f); \n"
+"    if (vertexId == 1) f.Tex.x = 1.f; \n"
+"    else if (vertexId == 2) f.Tex.y = 1.f; \n"
+"    else if (vertexId == 3) f.Tex.xy = float2(1.f, 1.f); \n"
+"    \n"
+"    f.Pos = float4( g_vQuadRect.xy + f.Tex * g_vQuadRect.zw, 0, 1);\n"
+"    \n"
+"    if (g_UseCase == 1) { \n"
+"        if (vertexId == 1) f.Tex.z = 0.5f; \n"
+"        else if (vertexId == 2) f.Tex.z = 0.5f; \n"
+"        else if (vertexId == 3) f.Tex.z = 1.f; \n"
+"    } \n"
+"    else if (g_UseCase >= 2) { \n"
+"        f.Tex.xy = f.Tex.xy * 2.f - 1.f; \n"
+"    } \n"
+"    return f;\n"
+"}\n"
+"\n"
+"float4 PS( Fragment f ) : SV_Target\n"
+"{\n"
+"    if (g_UseCase == 0) return g_Texture2D.Sample( samLinear, f.Tex.xy ); "
+"\n"
+"    else if (g_UseCase == 1) return g_Texture3D.Sample( samLinear, f.Tex "
+"); \n"
+"    else if (g_UseCase == 2) return g_TextureCube.Sample( samLinear, "
+"float3(f.Tex.xy, 1.0) ); \n"
+"    else if (g_UseCase == 3) return g_TextureCube.Sample( samLinear, "
+"float3(f.Tex.xy, -1.0) ); \n"
+"    else if (g_UseCase == 4) return g_TextureCube.Sample( samLinear, "
+"float3(1.0, f.Tex.xy) ); \n"
+"    else if (g_UseCase == 5) return g_TextureCube.Sample( samLinear, "
+"float3(-1.0, f.Tex.xy) ); \n"
+"    else if (g_UseCase == 6) return g_TextureCube.Sample( samLinear, "
+"float3(f.Tex.x, 1.0, f.Tex.y) ); \n"
+"    else if (g_UseCase == 7) return g_TextureCube.Sample( samLinear, "
+"float3(f.Tex.x, -1.0, f.Tex.y) ); \n"
+"    else return float4(f.Tex, 1);\n"
+"}\n"
+"\n";
+
+struct ConstantBuffer
+{
+	float vQuadRect[4];
+	int   UseCase;
+};
+
+Microsoft::WRL::ComPtr<ID3D11Buffer> g_pConstantBuffer;
+Microsoft::WRL::ComPtr<ID3D11SamplerState> g_pSamplerState;
+
 
 void Renderer::Init(HWND winHandle) {
 	//Fill Swap Chain Descriptor
@@ -49,7 +121,7 @@ void Renderer::Init(HWND winHandle) {
 		}
 	}
 
-	//==============UNCOMMENT TO CHECK DEVICE==============
+	//==============UNCOMMENT TO CHECK ADAPTER==============
 	//Microsoft::WRL::ComPtr<IDXGIDevice> dxgiDevice;
 	//if (SUCCEEDED(Device.As(&dxgiDevice))) {
 	//	// Get the adapter for this device
@@ -71,6 +143,177 @@ void Renderer::Init(HWND winHandle) {
 
 	Device->CreateRenderTargetView(backBuffer.Get(), NULL, RTView.GetAddressOf());
 
+	// Bind RT
+	Context->OMSetRenderTargets(1u, RTView.GetAddressOf(), NULL);
+
+	//Configure Viewport
+	D3D11_VIEWPORT vp;
+	vp.Width = 1270;
+	vp.Height = 710;
+	vp.MinDepth = 0;
+	vp.MaxDepth = 1;
+	vp.TopLeftX = 5;
+	vp.TopLeftY = 5;
+	Context->RSSetViewports(1u, &vp);
+}
+
+void Renderer::InitTextures() {
+	Texture2D.width = 256;
+	Texture2D.height = 256;
+
+	D3D11_TEXTURE2D_DESC texture2DDesc = {};
+	texture2DDesc.Width = Texture2D.width;
+	texture2DDesc.Height = Texture2D.height;
+	texture2DDesc.MipLevels = 1;
+	texture2DDesc.ArraySize = 1;
+	texture2DDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	texture2DDesc.SampleDesc.Count = 1;
+	texture2DDesc.Usage = D3D11_USAGE_DEFAULT;
+	texture2DDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	if (FAILED(Device->CreateTexture2D(&texture2DDesc, NULL, &Texture2D.pTexture))) {
+		throw std::exception("Creating Texture Failed");
+	}
+
+	if (FAILED(Device->CreateShaderResourceView((Texture2D.pTexture.Get()), NULL, &Texture2D.pSRView))) {
+		throw std::exception("Creating SRV Failed");
+	}
+}
+
+void Renderer::CUDAStuff()
+{
+	cudaError ce = cudaGraphicsD3D11RegisterResource(
+		&Texture2D.cudaResource, Texture2D.pTexture.Get(), cudaGraphicsRegisterFlagsNone);
+	//TIP: Maybe use cudaGraphicsRegisterFlagsSurfaceLoadStore for the flag
+	if (ce == !cudaSuccess) {
+		throw std::exception("CUDA D3D11 Register Resource registration failed");
+	}
+
+	cudaMallocPitch(&Texture2D.cudaLinearMemory,
+		&Texture2D.pitch,
+		g_texture_2d.width * sizeof(float) * 4,
+		g_texture_2d.height);
+
+	cudaMemset(g_texture_2d.cudaLinearMemory, 1, g_texture_2d.pitch * g_texture_2d.height);
+}
+
+void Renderer::ContinueInit() {
+	Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob;
+	Microsoft::WRL::ComPtr<ID3DBlob> pErrorMsgs;
+	HRESULT hr = {};
+	//VERTEX SHADER
+	{
+		hr = D3DCompile(g_simpleShaders,
+			strlen(g_simpleShaders),
+			"Memory",
+			NULL,
+			NULL, //TIP: if shader has an include, change this!
+			"VS",
+			"vs_5_0",
+			0 /*Flags1*/,
+			0 /*Flags2*/,
+			&shaderBlob,
+			&pErrorMsgs);
+
+		if (FAILED(hr)) {
+			const char* pStr = (const char*)pErrorMsgs->GetBufferPointer();
+			throw std::exception(pStr);
+		}
+
+		hr = Device->CreateVertexShader(
+			shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), NULL, &VertexShader);
+		if (FAILED(hr)) {
+			throw std::exception("CreateVertexShader Failed");
+		}
+		// Let's bind it now : no other vtx shader will replace it...
+		Context->VSSetShader(VertexShader.Get(), NULL, 0);
+		// hr = g_pd3dDevice->CreateInputLayout(...pShader used for signature...) No
+		// need
+	}
+
+	// PIXEL SHADER
+	{
+		hr = D3DCompile(g_simpleShaders,
+			strlen(g_simpleShaders),
+			"Memory",
+			NULL,
+			NULL, //TIP: if shader has an include, chang ethis!
+			"PS",
+			"ps_5_0",
+			0 /*Flags1*/,
+			0 /*Flags2*/,
+			&shaderBlob,
+			&pErrorMsgs);
+
+		if (FAILED(hr)) {
+			const char* pStr = (const char*)pErrorMsgs->GetBufferPointer();
+			throw std::exception(pStr);
+		}
+
+		hr = Device->CreatePixelShader(
+			shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), NULL, &PixelShader);
+		if (FAILED(hr)) {
+			throw std::exception("CreatePixelShader Failed");
+		}
+		// Let's bind it now : no other pix shader will replace it...
+		Context->PSSetShader(PixelShader.Get(), NULL, 0);
+	}
+
+	// Create the constant buffer that both the VS and PS use? 
+	{
+		D3D11_BUFFER_DESC cbDesc;
+		cbDesc.Usage = D3D11_USAGE_DYNAMIC;  //TIP: https://learn.microsoft.com/en-us/windows/win32/direct3d11/how-to--use-dynamic-resources
+		cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER; // D3D11_BIND_SHADER_RESOURCE;
+		cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		cbDesc.MiscFlags = 0;
+		cbDesc.ByteWidth = 16 * ((sizeof(ConstantBuffer) + 16) / 16);
+		// cbDesc.StructureByteStride = 0;
+		hr = Device->CreateBuffer(&cbDesc, NULL, &g_pConstantBuffer);
+		if (FAILED(hr)) {
+			throw std::exception("Create Constant Buffer Failed");
+		}
+		// Assign the buffer now : nothing in the code will interfere with this
+		// (very simple sample)
+		Context->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+		Context->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+	}
+
+	// SAMPLER STATE
+	{
+		D3D11_SAMPLER_DESC sDesc;
+		sDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		sDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+		sDesc.MinLOD = 0;
+		sDesc.MaxLOD = 8;
+		sDesc.MipLODBias = 0;
+		sDesc.MaxAnisotropy = 1;
+		hr = Device->CreateSamplerState(&sDesc, &g_pSamplerState);
+		if (FAILED(hr)) {
+			throw std::exception("Create Sampler State Failed");
+		}
+
+		Context->PSSetSamplers(0, 1, &g_pSamplerState);
+	}
+
+	// Setup no Input Layout
+	Context->IASetInputLayout(0);
+	Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	D3D11_RASTERIZER_DESC rasterizerState;
+	rasterizerState.FillMode = D3D11_FILL_SOLID;
+	rasterizerState.CullMode = D3D11_CULL_FRONT;
+	rasterizerState.FrontCounterClockwise = false;
+	rasterizerState.DepthBias = false;
+	rasterizerState.DepthBiasClamp = 0;
+	rasterizerState.SlopeScaledDepthBias = 0;
+	rasterizerState.DepthClipEnable = false;
+	rasterizerState.ScissorEnable = false;
+	rasterizerState.MultisampleEnable = false;
+	rasterizerState.AntialiasedLineEnable = false;
+	Device->CreateRasterizerState(&rasterizerState, &g_pRasterState);
+	Context->RSSetState(g_pRasterState.Get());
 }
 
 void Renderer::ClearBuffer(float red, float green, float blue) {
@@ -118,7 +361,7 @@ void Renderer::DrawTestTriangle() {
 	Microsoft::WRL::ComPtr<ID3DBlob> Blob;
 
 	// Create Pixel Shader
-	Microsoft::WRL::ComPtr<ID3D11PixelShader> PixelShader;
+	//Microsoft::WRL::ComPtr<ID3D11PixelShader> PixelShader;
 	hr = D3DReadFileToBlob(L"PixelShader.cso", &Blob);
 	if (FAILED(hr)) { throw std::exception("D3DReadFileToBlob PS Failed"); }
 
@@ -128,7 +371,7 @@ void Renderer::DrawTestTriangle() {
 	Context->PSSetShader(PixelShader.Get(), NULL, 0);
 
 	//Create Vertex Shader
-	Microsoft::WRL::ComPtr<ID3D11VertexShader> VertexShader;
+	//Microsoft::WRL::ComPtr<ID3D11VertexShader> VertexShader;
 	hr = D3DReadFileToBlob(L"VertexShader.cso", &Blob);
 	if (FAILED(hr)) { throw std::exception("D3DReadFileToBlob VS Failed"); }
 
@@ -147,23 +390,14 @@ void Renderer::DrawTestTriangle() {
 	if (FAILED(hr)) { throw std::exception("Create Input Layout Failed"); }
 	Context->IASetInputLayout(InputLayout.Get());
 
-	// Bind RT
-	Context->OMSetRenderTargets(1u, RTView.GetAddressOf(), NULL);
-
-	//Configure Viewport
-	D3D11_VIEWPORT vp;
-	vp.Width = 1270;
-	vp.Height = 710;
-	vp.MinDepth = 0;
-	vp.MaxDepth = 1;
-	vp.TopLeftX = 5;
-	vp.TopLeftY = 5;
-	Context->RSSetViewports(1u, &vp);
-
 	// Set primitive topology to triangle list
 	Context->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 	Context->Draw(std::size(vertices), 0u);
+}
+
+void Renderer::DrawTexture()
+{
 }
 
 void Renderer::PrintAllAdapterNames()
