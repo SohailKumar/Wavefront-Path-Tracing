@@ -31,6 +31,18 @@ __global__ void cuda_kernel_texture_2d(unsigned char* surface, int width, int he
     pixel[1] = 0.0;
     pixel[2] = (float)y/width;
     pixel[3] = 1;
+    if (x > 1000 && x <= 1200 && y > 500 && y <= 700) {
+        pixel[0] = float(x + y) / (width + width);
+        pixel[1] = 0.0;
+        pixel[2] = (float)y / width;
+        pixel[3] = 1;
+    }
+    else {
+        pixel[0] = 0.0f;
+        pixel[1] = 1.0;
+        pixel[2] = 0.0f;
+        pixel[3] = 1;
+    }
 }
 
 extern  "C" void cuda_texture_2d(void* surface, size_t width, size_t height, size_t pitch, float t)

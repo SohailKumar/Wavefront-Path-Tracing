@@ -3,9 +3,21 @@
 #include <iomanip>
 #include "window.h"
 #include "Timer.h"
-#include "Renderer.h"
+#include "GraphicsDx11.h"
 
 Timer timer;
+
+void Update() {
+	const float t = timer.Peek();
+	std::wostringstream oss{}; // Initialize oss
+	oss << L"Time Elapsed: " << std::setprecision(1) << std::fixed << t << L" sec";
+	Window::SetTitle(oss.str());
+
+    //Renderer::ClearBuffer(0.1, 0.0, 0.2);
+    GraphicsDx11::CUDARender();
+
+    //GraphicsDx11::FinishFrame();
+}
 
 // Helper function to convert const char* to std::wstring
 inline std::wstring ToWide(const char* str) {
@@ -15,18 +27,6 @@ inline std::wstring ToWide(const char* str) {
     // Remove the null terminator for MessageBox
     if (!wstr.empty() && wstr.back() == L'\0') wstr.pop_back();
     return wstr;
-}
-
-void Update() {
-	const float t = timer.Peek();
-	std::wostringstream oss{}; // Initialize oss
-	oss << L"Time Elapsed: " << std::setprecision(1) << std::fixed << t << L" sec";
-	Window::SetTitle(oss.str());
-
-    //Renderer::ClearBuffer(0.1, 0.0, 0.2);
-    Renderer::CUDARender();
-
-    //Renderer::FinishFrame();
 }
 
 int WINAPI wWinMain(
@@ -42,17 +42,17 @@ int WINAPI wWinMain(
 
     try {
         Window::Create(hInst, width, height, L"Nami Window Name Here", false, NULL);
-        Renderer::Init(Window::GetHandle());
+        GraphicsDx11::Init(Window::GetHandle());
 
-        Renderer::ContinueInit();
-        Renderer::InitTextures();
-        Renderer::CUDASetupStuff();
+        GraphicsDx11::ContinueInit();
+        GraphicsDx11::InitTextures();
+        GraphicsDx11::CUDASetupStuff();
 
         // Game Loop
         while(true)
         {
             if (const auto exitCode = Window::ProcessMessages()) {
-                Renderer::Destroy();
+                GraphicsDx11::Destroy();
                 return *exitCode;
             }
             Update();

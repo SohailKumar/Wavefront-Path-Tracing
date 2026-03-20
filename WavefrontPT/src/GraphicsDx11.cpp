@@ -1,4 +1,4 @@
-#include "Renderer.h"
+#include "GraphicsDx11.h"
 #include <exception>
 #include <iterator> //for std::size
 #include <sstream>
@@ -52,9 +52,10 @@ Microsoft::WRL::ComPtr<ID3D11SamplerState> g_pSamplerState;
 extern "C"
 {
 	bool cuda_texture_2d(void* surface, size_t width, size_t height, size_t pitch, float t);
+	bool cuda_SendRays(void* surface, size_t width, size_t height, size_t pitch);
 }
 
-void Renderer::Init(HWND winHandle) {
+void GraphicsDx11::Init(HWND winHandle) {
 	//Fill Swap Chain Descriptor
 	DXGI_SWAP_CHAIN_DESC sd = {};
 	sd.BufferDesc.Width = 0;
@@ -133,7 +134,7 @@ void Renderer::Init(HWND winHandle) {
 	Context->RSSetViewports(1u, &vp);
 }
 
-void Renderer::ContinueInit() {
+void GraphicsDx11::ContinueInit() {
 	Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob;
 	Microsoft::WRL::ComPtr<ID3DBlob> pErrorMsgs;
 	HRESULT hr = {};
@@ -254,7 +255,7 @@ void Renderer::ContinueInit() {
 
 
 
-void Renderer::InitTextures() {
+void GraphicsDx11::InitTextures() {
 	Texture2D.width = 1280;
 	Texture2D.height = 720;
 
@@ -278,7 +279,7 @@ void Renderer::InitTextures() {
 	Context->PSSetShaderResources(0, 1, Texture2D.pSRView.GetAddressOf());
 }
 
-void Renderer::CUDASetupStuff()
+void GraphicsDx11::CUDASetupStuff()
 {
 	cudaError_t ce = cudaGraphicsD3D11RegisterResource(
 		&(Texture2D.cudaResource), Texture2D.pTexture.Get(), cudaGraphicsRegisterFlagsNone);
@@ -295,8 +296,8 @@ void Renderer::CUDASetupStuff()
 	if (ce != cudaSuccess) { throw std::exception("CUDA Memset failed");}
 }
 
-void Renderer::DrawSceneTexture2D() {
-	Renderer::ClearBuffer(0.1, 0.1f, 0.2f);
+void GraphicsDx11::DrawSceneTexture2D() {
+	GraphicsDx11::ClearBuffer(0.1, 0.1f, 0.2f);
 	float quadRect[4] = { -1.0f, -1.0f, 2.0f, 2.0f };
 
 	HRESULT                  hr;
@@ -314,7 +315,7 @@ void Renderer::DrawSceneTexture2D() {
 	SwapChain->Present(1, 0);
 }
 
-void Renderer::CUDARender() {
+void GraphicsDx11::CUDARender() {
 	cudaStream_t stream = 0;
 	const int nbResources = 1;
 	cudaGraphicsResource* ppResources[nbResources] = {
@@ -331,9 +332,12 @@ void Renderer::CUDARender() {
 		ce = cudaGraphicsSubResourceGetMappedArray(&cuArray, Texture2D.cudaResource, 0, 0);
 		if (ce != cudaSuccess) { throw std::exception("cudaGraphicsSubResourceGetMappedArray failed"); }
 
+		//Camera cam = Camera(make_float3(0, 0, 0), make_float3(0, 0, 1), 8, 16, 9);
+
 		// kick off the kernel and send the staging buffer cudaLinearMemory as an
 		// argument to allow the kernel to write to it
-		cuda_texture_2d(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, t);
+		cuda_SendRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
+		//cuda_texture_2d(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, t);
 		cudaError_t err = cudaGetLastError();
 		if (err != cudaSuccess) {
 			throw std::exception("Kernel launch error: %s\n");
@@ -363,12 +367,12 @@ void Renderer::CUDARender() {
 	DrawSceneTexture2D();
 }
 
-void Renderer::ClearBuffer(float red, float green, float blue) {
+void GraphicsDx11::ClearBuffer(float red, float green, float blue) {
 	const float color[] = { red, green, blue, 1.0f };
 	Context.Get()->ClearRenderTargetView(RTView.Get(), color);
 }
 
-void Renderer::DrawTestTriangle() {
+void GraphicsDx11::DrawTestTriangle() {
 
 	//Create Vertex Buffer
 	struct Vertex {
@@ -444,7 +448,7 @@ void Renderer::DrawTestTriangle() {
 }
 
 
-void Renderer::PrintAllAdapterNames()
+void GraphicsDx11::PrintAllAdapterNames()
 {
 	Microsoft::WRL::ComPtr<IDXGIFactory> factory;
 	CreateDXGIFactory(IID_PPV_ARGS(&factory));
@@ -462,11 +466,11 @@ void Renderer::PrintAllAdapterNames()
 	MessageBoxW(NULL, ss.str().c_str(), L"Adapter List", MB_OK | MB_ICONINFORMATION);
 }
 
-void Renderer::Destroy() {
+void GraphicsDx11::Destroy() {
 
 }
 
-void Renderer::FinishFrame()
+void GraphicsDx11::FinishFrame()
 {
 	SwapChain->Present(1, 0);
 }
