@@ -37,8 +37,7 @@ namespace GraphicsDx11 {
 	void DrawTestTriangle();
 
 	void PrintAllAdapterNames();
-	void InitTextures();
-	void CUDASetupStuff();
+	void InitTexturesAndRegisterWithCUDA();
 	void CUDARender();
 	void DrawSceneTexture2D();
 };

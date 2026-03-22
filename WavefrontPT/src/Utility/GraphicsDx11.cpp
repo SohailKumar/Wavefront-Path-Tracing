@@ -2,6 +2,10 @@
 #include <exception>
 #include <iterator> //for std::size
 #include <sstream>
+#include "Window.h"
+#include "Camera.h"
+#include <vector_types.h>
+#include "Renderer.h"
 
 //
 // Vertex and Pixel shaders here : VS() & PS()
@@ -49,11 +53,11 @@ struct ConstantBuffer
 Microsoft::WRL::ComPtr<ID3D11Buffer> g_pConstantBuffer;
 Microsoft::WRL::ComPtr<ID3D11SamplerState> g_pSamplerState;
 
-extern "C"
-{
-	bool cuda_texture_2d(void* surface, size_t width, size_t height, size_t pitch, float t);
-	bool cuda_SendRays(void* surface, size_t width, size_t height, size_t pitch);
-}
+//extern "C"
+//{
+//	bool cuda_texture_2d(void* surface, size_t width, size_t height, size_t pitch, float t);
+//	bool cuda_SendRays(void* surface, size_t width, size_t height, size_t pitch);
+//}
 
 void GraphicsDx11::Init(HWND winHandle) {
 	//Fill Swap Chain Descriptor
@@ -253,9 +257,7 @@ void GraphicsDx11::ContinueInit() {
 	Context->RSSetState(g_pRasterState.Get());
 }
 
-
-
-void GraphicsDx11::InitTextures() {
+void GraphicsDx11::InitTexturesAndRegisterWithCUDA() {
 	Texture2D.width = 1280;
 	Texture2D.height = 720;
 
@@ -277,21 +279,21 @@ void GraphicsDx11::InitTextures() {
 		throw std::exception("Creating SRV Failed");
 	}
 	Context->PSSetShaderResources(0, 1, Texture2D.pSRView.GetAddressOf());
-}
 
-void GraphicsDx11::CUDASetupStuff()
-{
+	//Registering D3D11 Texture with CUDA
 	cudaError_t ce = cudaGraphicsD3D11RegisterResource(
 		&(Texture2D.cudaResource), Texture2D.pTexture.Get(), cudaGraphicsRegisterFlagsNone);
-	//TIP: Maybe use cudaGraphicsRegisterFlagsSurfaceLoadStore for the flag
+
 	if (ce != cudaSuccess) { throw std::exception("CUDA D3D11 Register Resource registration failed"); }
 
+	//Allocate memory in GPU for the texture
 	ce = cudaMallocPitch(&Texture2D.cudaLinearMemory,
 		&(Texture2D.pitch),
 		Texture2D.width * sizeof(float) * 4,
 		Texture2D.height);
 	if (ce != cudaSuccess) {throw std::exception("CUDA Malloc Pitch failed"); }
 
+	// Fill allocated memory with 1s
 	ce = cudaMemset(Texture2D.cudaLinearMemory, 1, Texture2D.pitch * Texture2D.height);
 	if (ce != cudaSuccess) { throw std::exception("CUDA Memset failed");}
 }
@@ -316,6 +318,8 @@ void GraphicsDx11::DrawSceneTexture2D() {
 }
 
 void GraphicsDx11::CUDARender() {
+
+	// Map Resources so D3D11 can't access them
 	cudaStream_t stream = 0;
 	const int nbResources = 1;
 	cudaGraphicsResource* ppResources[nbResources] = {
@@ -326,30 +330,29 @@ void GraphicsDx11::CUDARender() {
 	
 	static float t = 0.0f;
 
-	// populate the 2d texture
+	// Populate the 2d texture
 	{
 		cudaArray* cuArray;
 		ce = cudaGraphicsSubResourceGetMappedArray(&cuArray, Texture2D.cudaResource, 0, 0);
 		if (ce != cudaSuccess) { throw std::exception("cudaGraphicsSubResourceGetMappedArray failed"); }
 
 		//Camera cam = Camera(make_float3(0, 0, 0), make_float3(0, 0, 1), 8, 16, 9);
+		Camera cam = Camera(float3(0, 0, 0), float3(0, 0, 1), 16, 9, Window::GetWidth(), Window::GetHeight());
+		Scene scene = Scene(cam);
+		Renderer renderer = Renderer(Window::GetWidth(), Window::GetHeight());
+		renderer.Initialize(scene);
+		renderer.InitializeRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
 
-		// kick off the kernel and send the staging buffer cudaLinearMemory as an
-		// argument to allow the kernel to write to it
-		cuda_SendRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
+		//cuda_SendRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
 		//cuda_texture_2d(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, t);
+
 		cudaError_t err = cudaGetLastError();
-		if (err != cudaSuccess) {
-			throw std::exception("Kernel launch error: %s\n");
-		}
+		if (err != cudaSuccess) { throw std::exception("Kernel launch error: %s\n"); }
 
 		err = cudaDeviceSynchronize();
-		if (err != cudaSuccess) {
-			throw std::exception("Kernel execution error: %s\n");
-		}
+		if (err != cudaSuccess) { throw std::exception("Kernel execution error: %s\n");	}
 
-		// then we want to copy cudaLinearMemory to the D3D texture, via its mapped
-		// form : cudaArray
+		// Copy cudaLinearMemory to the D3D texture using its mapped form : cudaArray
 		ce = cudaMemcpy2DToArray(cuArray, // dst array
 			0,
 			0, // offset
@@ -380,12 +383,19 @@ void GraphicsDx11::DrawTestTriangle() {
 		float y;
 	};
 
+	//const Vertex vertices[] =
+	//{
+	//	{	 0.0f,	 0.5f	},
+	//	{	 0.5f,	-0.5f	},
+	//	{	-0.5f,	-0.5f	},
+	//};
+
 	const Vertex vertices[] =
 	{
 		{	-1.0f,	-1.0f	},
 		{	-1.0f,	1.0f	},
 		{	1.0f,	-1.0f	},
-		{	1.0f,	1.0f	}
+		//{	1.0f,	1.0f	}
 	};
 
 	//Populate Vertex Buffer Description

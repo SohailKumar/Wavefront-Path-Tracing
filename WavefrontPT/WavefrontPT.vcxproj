@@ -96,10 +96,14 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="src\texture_2d.cu" />
-    <CudaCompile Include="src\tracer.cu" />
+    <CudaCompile Include="src\CUDA\Kernels.cu" />
+    <CudaCompile Include="src\CUDA\Renderer.cu" />
+    <CudaCompile Include="src\CUDA\texture_2d.cu" />
+    <CudaCompile Include="src\CUDA\tracer.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Core\Camera.cpp" />
+    <ClCompile Include="src\Core\Scene.cpp" />
     <ClCompile Include="src\imgui\imgui.cpp" />
     <ClCompile Include="src\imgui\imgui_demo.cpp" />
     <ClCompile Include="src\imgui\imgui_draw.cpp" />
@@ -108,33 +112,19 @@
     <ClCompile Include="src\imgui\imgui_tables.cpp" />
     <ClCompile Include="src\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\ModelLoaderMain.cpp" />
-    <ClCompile Include="src\GraphicsDx11.cpp" />
-    <ClCompile Include="src\timer.cpp" />
-    <ClCompile Include="src\Window.cpp" />
+    <ClCompile Include="src\Utility\GraphicsDx11.cpp" />
+    <ClCompile Include="src\Utility\timer.cpp" />
+    <ClCompile Include="src\Utility\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\ModelLoader.h" />
-    <ClInclude Include="src\GraphicsDx11.h" />
-    <ClInclude Include="src\Renderer.h" />
-    <ClInclude Include="src\Timer.h" />
+    <ClInclude Include="src\Core\Camera.h" />
+    <ClInclude Include="src\Core\Scene.h" />
+    <ClInclude Include="src\CUDA\Renderer.h" />
+    <ClInclude Include="src\Utility\GraphicsDx11.h" />
+    <ClInclude Include="src\Utility\Kernels.cuh" />
+    <ClInclude Include="src\Utility\Timer.h" />
     <ClInclude Include="src\Utility\helper_math.h" />
-    <ClInclude Include="src\Utils.h" />
-    <ClInclude Include="src\Window.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="src\Shaders\PixelShader.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
-    <FxCompile Include="src\Shaders\VertexShader.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)%(Filename).cso</ObjectFileOutput>
-    </FxCompile>
+    <ClInclude Include="src\Utility\Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

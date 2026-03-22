@@ -8,15 +8,12 @@
 Timer timer;
 
 void Update() {
-	const float t = timer.Peek();
-	std::wostringstream oss{}; // Initialize oss
-	oss << L"Time Elapsed: " << std::setprecision(1) << std::fixed << t << L" sec";
-	Window::SetTitle(oss.str());
+    timer.UpdateWindowTitleWithTimer();
 
-    //Renderer::ClearBuffer(0.1, 0.0, 0.2);
+    GraphicsDx11::ClearBuffer(0.1, 0.0, 0.2);
     GraphicsDx11::CUDARender();
 
-    //GraphicsDx11::FinishFrame();
+    GraphicsDx11::FinishFrame();
 }
 
 // Helper function to convert const char* to std::wstring
@@ -45,8 +42,7 @@ int WINAPI wWinMain(
         GraphicsDx11::Init(Window::GetHandle());
 
         GraphicsDx11::ContinueInit();
-        GraphicsDx11::InitTextures();
-        GraphicsDx11::CUDASetupStuff();
+        GraphicsDx11::InitTexturesAndRegisterWithCUDA();
 
         // Game Loop
         while(true)
