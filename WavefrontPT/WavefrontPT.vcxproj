@@ -98,8 +98,6 @@
   <ItemGroup>
     <CudaCompile Include="src\CUDA\Kernels.cu" />
     <CudaCompile Include="src\CUDA\Renderer.cu" />
-    <CudaCompile Include="src\CUDA\texture_2d.cu" />
-    <CudaCompile Include="src\CUDA\tracer.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\Camera.cpp" />
@@ -117,6 +115,7 @@
     <ClCompile Include="src\Utility\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Core\App.h" />
     <ClInclude Include="src\Core\Camera.h" />
     <ClInclude Include="src\Core\Scene.h" />
     <ClInclude Include="src\CUDA\Renderer.h" />

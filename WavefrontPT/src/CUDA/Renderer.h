@@ -15,6 +15,7 @@ public:
 	}
 
 	void Initialize(const Scene& scene);
-	void InitializeRays(void* surface, size_t width, size_t height, size_t pitch);
+	void InitializeRays(void* surface, size_t width, size_t height, size_t pitch, CameraData camData, float t);
+	void TextureTest(void* surface, size_t width, size_t height, size_t pitch);
 
 };

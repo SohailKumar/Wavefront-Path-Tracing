@@ -327,7 +327,7 @@ void GraphicsDx11::CUDARender() {
 	};
 	cudaError_t ce = cudaGraphicsMapResources(nbResources, ppResources, stream);
 	if (ce != cudaSuccess) { throw std::exception("CUDAGraphicsMapResources failed"); }
-	
+
 	static float t = 0.0f;
 
 	// Populate the 2d texture
@@ -336,15 +336,15 @@ void GraphicsDx11::CUDARender() {
 		ce = cudaGraphicsSubResourceGetMappedArray(&cuArray, Texture2D.cudaResource, 0, 0);
 		if (ce != cudaSuccess) { throw std::exception("cudaGraphicsSubResourceGetMappedArray failed"); }
 
-		//Camera cam = Camera(make_float3(0, 0, 0), make_float3(0, 0, 1), 8, 16, 9);
-		Camera cam = Camera(float3(0, 0, 0), float3(0, 0, 1), 16, 9, Window::GetWidth(), Window::GetHeight());
+		//////////////////////////////////////////
+		Camera cam = Camera(float3(0, 0, 10), float3(0, 0, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
 		Scene scene = Scene(cam);
 		Renderer renderer = Renderer(Window::GetWidth(), Window::GetHeight());
 		renderer.Initialize(scene);
-		renderer.InitializeRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
+		renderer.InitializeRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, cam.camDetails, t);
+		//renderer.TextureTest(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
 
-		//cuda_SendRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
-		//cuda_texture_2d(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, t);
+		//////////////////////////////////////////
 
 		cudaError_t err = cudaGetLastError();
 		if (err != cudaSuccess) { throw std::exception("Kernel launch error: %s\n"); }
@@ -363,7 +363,7 @@ void GraphicsDx11::CUDARender() {
 			cudaMemcpyDeviceToDevice); // kind
 		if (ce != cudaSuccess) { throw std::exception("cudaMemcpy2DToArray failed"); }
 	}
-	t += 0.1f;
+	t +=0.00f;
 
 	cudaGraphicsUnmapResources(nbResources, ppResources, stream);
 
