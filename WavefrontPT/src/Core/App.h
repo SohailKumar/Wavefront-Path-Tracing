@@ -2,8 +2,8 @@
 #include "Scene.h"
 
 namespace App {
-	void InitApp();
+	void CreateApp();
 	void GetScene();
 	void GetCamera();
-
+	void GetRenderer();
 }

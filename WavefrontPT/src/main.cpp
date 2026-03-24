@@ -4,11 +4,12 @@
 #include "window.h"
 #include "Timer.h"
 #include "GraphicsDx11.h"
+#include "App.h"
 
 Timer timer;
 
 void Update() {
-    timer.UpdateWindowTitleWithTimer();
+    // timer.UpdateWindowTitleWithTimer();
 
     GraphicsDx11::ClearBuffer(0.1, 0.0, 0.2);
     GraphicsDx11::CUDARender();
@@ -44,6 +45,14 @@ int WINAPI wWinMain(
         GraphicsDx11::ContinueInit();
         GraphicsDx11::InitTexturesAndRegisterWithCUDA();
 
+        //Init Scene and Renderer
+        Camera cam = Camera(float3(0, 0, 10), float3(0, 0, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
+		Scene scene = Scene(cam);
+		Renderer renderer = Renderer(Window::GetWidth(), Window::GetHeight());
+		
+        App app = App::CreateApp(scene, renderer);
+
+        Timer fpsTimer = Timer(); 
         // Game Loop
         while(true)
         {
@@ -52,6 +61,7 @@ int WINAPI wWinMain(
                 return *exitCode;
             }
             Update();
+            fpsTimer.UpdateWindowTitleWithTimer(true);
         }
     }
     catch (std::exception& e) {

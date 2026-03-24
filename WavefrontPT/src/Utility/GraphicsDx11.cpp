@@ -5,7 +5,8 @@
 #include "Window.h"
 #include "Camera.h"
 #include <vector_types.h>
-#include "Renderer.h"
+// #include "Renderer.h"
+#include "App.h"
 
 //
 // Vertex and Pixel shaders here : VS() & PS()
@@ -337,11 +338,8 @@ void GraphicsDx11::CUDARender() {
 		if (ce != cudaSuccess) { throw std::exception("cudaGraphicsSubResourceGetMappedArray failed"); }
 
 		//////////////////////////////////////////
-		Camera cam = Camera(float3(0, 0, 10), float3(0, 0, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
-		Scene scene = Scene(cam);
-		Renderer renderer = Renderer(Window::GetWidth(), Window::GetHeight());
-		renderer.Initialize(scene);
-		renderer.InitializeRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, cam.camDetails, t);
+		App::renderer.Initialize(scene);
+		App::renderer.InitializeRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, cam.camDetails, t);
 		//renderer.TextureTest(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
 
 		//////////////////////////////////////////
