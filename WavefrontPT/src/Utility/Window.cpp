@@ -9,6 +9,7 @@ namespace Window{
         HWND _winHandle;
         bool _hasFocus;
         bool _isMinimized;
+        bool consoleCreated;
     }
 }
 unsigned int Window::GetWidth() { return _windowWidth; }
@@ -36,6 +37,7 @@ LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
 
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
+
 
 std::optional<int> Window::ProcessMessages() {
     MSG msg;
@@ -133,6 +135,56 @@ HRESULT Window::Create(
 //void Window::UpdateStats(float totalTime)
 //{
 //}
+
+// --------------------------------------------------------
+// Allocates a console window we can print to for debugging
+// 
+// bufferLines   - Number of lines in the overall console buffer
+// bufferColumns - Numbers of columns in the overall console buffer
+// windowLines   - Number of lines visible at once in the window
+// windowColumns - Number of columns visible at once in the window
+// --------------------------------------------------------
+void Window::CreateConsoleWindow(int bufferLines, int bufferColumns, int windowLines, int windowColumns)
+{
+    // Only allow this once
+    if (consoleCreated)
+        return;
+
+    // Our temp console info struct
+    CONSOLE_SCREEN_BUFFER_INFO coninfo;
+
+    // Get the console info and set the number of lines
+    AllocConsole();
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &coninfo);
+    coninfo.dwSize.Y = bufferLines;
+    coninfo.dwSize.X = bufferColumns;
+    SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE), coninfo.dwSize);
+
+    SMALL_RECT rect = {};
+    rect.Left = 0;
+    rect.Top = 0;
+    rect.Right = windowColumns;
+    rect.Bottom = windowLines;
+    SetConsoleWindowInfo(GetStdHandle(STD_OUTPUT_HANDLE), TRUE, &rect);
+
+    FILE* stream;
+    freopen_s(&stream, "CONIN$", "r", stdin);
+    freopen_s(&stream, "CONOUT$", "w", stdout);
+    freopen_s(&stream, "CONOUT$", "w", stderr);
+
+    // Prevent accidental console window close
+    HWND consoleHandle = GetConsoleWindow();
+    HMENU hmenu = GetSystemMenu(consoleHandle, FALSE);
+    EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
+
+    // Get the current console mode and append options that allow colored output
+    DWORD currentMode = 0;
+    GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &currentMode);
+    SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE),
+        currentMode | ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+
+    consoleCreated = true;
+}
 
 void Window::Quit()
 {

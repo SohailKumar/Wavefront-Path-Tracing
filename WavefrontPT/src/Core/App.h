@@ -1,9 +1,9 @@
 #pragma once
-#include "Scene.h"
+#include "Renderer.h"
 
 namespace App {
-	void CreateApp();
-	void GetScene();
-	void GetCamera();
-	void GetRenderer();
+	void CreateApp(Renderer renderer, Scene scene);
+	Scene GetScene();
+	Camera GetCamera();
+	Renderer GetRenderer();
 }

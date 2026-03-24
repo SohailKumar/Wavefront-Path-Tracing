@@ -20,18 +20,33 @@ float Timer::Mark()
 // Returns duration of timer and DOESN'T reset timerStart
 float Timer::Peek() const
 {
-    return duration<float> (steady_clock::now() - timerStart).count();
+    return duration<float, std::milli> (steady_clock::now() - timerStart).count();
 }
 
 void Timer::UpdateWindowTitleWithTimer(bool mark)
 {
+    float t = 0;
     if(mark){
-        const float t = this->Mark();
+        t = this->Mark();
     }else{
-        const float t = this->Peek();
+        t = this->Peek();
     }
 
     std::wostringstream oss{}; // Initialize oss
     oss << L"Time: " << std::setprecision(1) << std::fixed << t << L" ms";
     Window::SetTitle(oss.str());
+}
+
+std::wstring Timer::GetStringTime(bool mark) {
+    float t = 0;
+    if (mark) {
+        t = this->Mark();
+    }
+    else {
+        t = this->Peek();
+    }
+
+    std::wostringstream oss{}; // Initialize oss
+    oss << std::setprecision(1) << std::fixed << t << L" ms";
+    return oss.str();
 }
