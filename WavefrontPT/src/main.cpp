@@ -5,16 +5,29 @@
 #include "Timer.h"
 #include "GraphicsDx11.h"
 #include "App.h"
+#include <iostream>
 
 Timer timer;
+Timer fpsTimer;
+//#define TIMER_ANALYSIS
 
 void Update() {
     // timer.UpdateWindowTitleWithTimer();
-
+    Timer updateTimer = Timer();
     GraphicsDx11::ClearBuffer(0.1, 0.0, 0.2);
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+    std::wcout << "\tClear Buffer: " << updateTimer.GetStringTime(true) << std::endl;
+#endif
+
     GraphicsDx11::CUDARender();
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+    std::wcout << "\tCUDA Render: " << updateTimer.GetStringTime(true) << std::endl;
+#endif
 
     GraphicsDx11::FinishFrame();
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+    std::wcout << "\tFinih Frame: " << updateTimer.GetStringTime(true) << std::endl;
+#endif
 }
 
 // Helper function to convert const char* to std::wstring
@@ -35,6 +48,10 @@ int WINAPI wWinMain(
 {
     timer = Timer();
 
+#if defined(DEBUG) | defined(_DEBUG)
+    Window::CreateConsoleWindow(500, 120, 32, 120);
+#endif
+
     const int width = 1280;
     const int height = 720;
 
@@ -50,9 +67,12 @@ int WINAPI wWinMain(
 		Scene scene = Scene(cam);
 		Renderer renderer = Renderer(Window::GetWidth(), Window::GetHeight());
 		
-        App app = App::CreateApp(scene, renderer);
+        App::CreateApp(renderer, scene);
 
-        Timer fpsTimer = Timer(); 
+        fpsTimer = Timer(); 
+#if defined(DEBUG) | defined(_DEBUG)
+        std::wcout << "\n\n";
+#endif
         // Game Loop
         while(true)
         {
@@ -61,7 +81,10 @@ int WINAPI wWinMain(
                 return *exitCode;
             }
             Update();
-            fpsTimer.UpdateWindowTitleWithTimer(true);
+            //fpsTimer.UpdateWindowTitleWithTimer(true);
+#if defined(DEBUG) | defined(_DEBUG)
+            std::wcout << fpsTimer.GetStringTime(true) << std::endl;
+#endif
         }
     }
     catch (std::exception& e) {

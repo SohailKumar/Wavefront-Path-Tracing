@@ -34,4 +34,6 @@ namespace Window
 		LPARAM lParam
 	);
 
+	void CreateConsoleWindow(int bufferLines, int bufferColumns, int windowLines, int windowColumns);
+
 }

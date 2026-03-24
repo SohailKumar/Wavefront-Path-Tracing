@@ -100,6 +100,7 @@
     <CudaCompile Include="src\CUDA\Renderer.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Core\App.cpp" />
     <ClCompile Include="src\Core\Camera.cpp" />
     <ClCompile Include="src\Core\Scene.cpp" />
     <ClCompile Include="src\imgui\imgui.cpp" />

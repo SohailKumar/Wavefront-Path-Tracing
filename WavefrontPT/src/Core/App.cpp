@@ -9,8 +9,23 @@ namespace App{
     }
 }
 
-App::CreateApp(Scene scene, Renderer renderer){
+void App::CreateApp(Renderer renderer, Scene scene){
     _cam = scene.camera;
     _scene = scene;
     _renderer = renderer;
+}
+
+Scene App::GetScene()
+{
+    return _scene;
+}
+
+Camera App::GetCamera()
+{
+    return _cam;
+}
+
+Renderer App::GetRenderer()
+{
+    return _renderer;
 }

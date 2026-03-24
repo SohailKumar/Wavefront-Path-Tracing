@@ -7,6 +7,8 @@
 #include <vector_types.h>
 // #include "Renderer.h"
 #include "App.h"
+#include "Timer.h"
+#include <iostream>
 
 //
 // Vertex and Pixel shaders here : VS() & PS()
@@ -300,7 +302,7 @@ void GraphicsDx11::InitTexturesAndRegisterWithCUDA() {
 }
 
 void GraphicsDx11::DrawSceneTexture2D() {
-	GraphicsDx11::ClearBuffer(0.1, 0.1f, 0.2f);
+	//GraphicsDx11::ClearBuffer(0.1, 0.1f, 0.2f);
 	float quadRect[4] = { -1.0f, -1.0f, 2.0f, 2.0f };
 
 	HRESULT                  hr;
@@ -315,10 +317,11 @@ void GraphicsDx11::DrawSceneTexture2D() {
 	}
 	Context->Unmap(g_pConstantBuffer.Get(), 0);
 	Context->Draw(4, 0);
-	SwapChain->Present(1, 0);
 }
 
-void GraphicsDx11::CUDARender() {
+void GraphicsDx11::CUDARender() 
+{
+	Timer timer = Timer();
 
 	// Map Resources so D3D11 can't access them
 	cudaStream_t stream = 0;
@@ -329,18 +332,22 @@ void GraphicsDx11::CUDARender() {
 	cudaError_t ce = cudaGraphicsMapResources(nbResources, ppResources, stream);
 	if (ce != cudaSuccess) { throw std::exception("CUDAGraphicsMapResources failed"); }
 
-	static float t = 0.0f;
+	cudaArray* cuArray;
+	ce = cudaGraphicsSubResourceGetMappedArray(&cuArray, Texture2D.cudaResource, 0, 0);
+	if (ce != cudaSuccess) { throw std::exception("cudaGraphicsSubResourceGetMappedArray failed"); }
+
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+	std::wcout << "\t\tMapped Resources = " << timer.GetStringTime(true) << std::endl;
+#endif
 
 	// Populate the 2d texture
 	{
-		cudaArray* cuArray;
-		ce = cudaGraphicsSubResourceGetMappedArray(&cuArray, Texture2D.cudaResource, 0, 0);
-		if (ce != cudaSuccess) { throw std::exception("cudaGraphicsSubResourceGetMappedArray failed"); }
+		static float t = 0.0f;
 
 		//////////////////////////////////////////
-		App::renderer.Initialize(scene);
-		App::renderer.InitializeRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, cam.camDetails, t);
-		//renderer.TextureTest(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
+		//App::renderer.Initialize(scene);
+		//App::GetRenderer().InitializeRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, App::GetCamera().camDetails, t);
+		App::GetRenderer().TextureTest(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
 
 		//////////////////////////////////////////
 
@@ -349,23 +356,40 @@ void GraphicsDx11::CUDARender() {
 
 		err = cudaDeviceSynchronize();
 		if (err != cudaSuccess) { throw std::exception("Kernel execution error: %s\n");	}
-
-		// Copy cudaLinearMemory to the D3D texture using its mapped form : cudaArray
-		ce = cudaMemcpy2DToArray(cuArray, // dst array
-			0,
-			0, // offset
-			Texture2D.cudaLinearMemory,
-			Texture2D.pitch, // src
-			Texture2D.width * 4 * sizeof(float),
-			Texture2D.height,       // extent
-			cudaMemcpyDeviceToDevice); // kind
-		if (ce != cudaSuccess) { throw std::exception("cudaMemcpy2DToArray failed"); }
+		
+		t +=0.00f;
 	}
-	t +=0.00f;
+
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+	std::wcout << "\t\tRan Renderer = " << timer.GetStringTime(true) << std::endl;
+#endif
+	
+	// Copy cudaLinearMemory to the D3D texture using its mapped form : cudaArray
+	ce = cudaMemcpy2DToArray(cuArray, // dst array
+		0,
+		0, // offset
+		Texture2D.cudaLinearMemory,
+		Texture2D.pitch, // src
+		Texture2D.width * 4 * sizeof(float),
+		Texture2D.height,       // extent
+		cudaMemcpyDeviceToDevice); // kind
+	if (ce != cudaSuccess) { throw std::exception("cudaMemcpy2DToArray failed"); }
+
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+	std::wcout << "\t\tCopied memory to texture = " << timer.GetStringTime(true) << std::endl;
+#endif
 
 	cudaGraphicsUnmapResources(nbResources, ppResources, stream);
 
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+	std::wcout << "\t\tUnmapped resources = " << timer.GetStringTime(true) << std::endl;
+#endif
+
 	DrawSceneTexture2D();
+
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+	std::wcout << "\t\tDrew Scene Texture = " << timer.GetStringTime(true) << std::endl;
+#endif
 }
 
 void GraphicsDx11::ClearBuffer(float red, float green, float blue) {

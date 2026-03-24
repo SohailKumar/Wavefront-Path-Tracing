@@ -17,6 +17,19 @@ class Camera {
 public:
 	CameraData camDetails;
 
+	//Never used default constructor
+	Camera() {
+		camDetails.position = {};
+		camDetails.forward = {};
+		camDetails.up = {};
+		camDetails.right = {};
+		camDetails.look_at = {};
+		camDetails.halfFilmPlaneWidth = {};
+		camDetails.halfFilmPlaneHeight = {};
+		camDetails.pixelWidth = {};
+		camDetails.pixelHeight = {};
+	}
+
 	// Constructor
 	Camera(float3 position,
 		float3 forward,

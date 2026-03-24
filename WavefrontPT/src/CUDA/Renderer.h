@@ -8,6 +8,12 @@ public:
 	dim3 blockSize;  // threads per block
 	dim3 gridSize; // blocks per grid
 
+	// Never used default constructor
+	Renderer() {
+		blockSize = dim3(16, 16);
+		gridSize = dim3(1024);
+	}
+
 	Renderer(int width, int height) {
 		blockSize = dim3(16, 16); // block dimensions are fixed to be 256 threads
 		gridSize = dim3((width + blockSize.x - 1) / blockSize.x, (height + blockSize.y - 1) / blockSize.y);
