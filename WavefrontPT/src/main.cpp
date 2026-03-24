@@ -3,10 +3,19 @@
 #include <iomanip>
 #include "window.h"
 #include "Timer.h"
-#include "Renderer.h"
-//#include "renderer.h"
+#include "GraphicsDx11.h"
+#include "App.h"
 
 Timer timer;
+
+void Update() {
+    // timer.UpdateWindowTitleWithTimer();
+
+    GraphicsDx11::ClearBuffer(0.1, 0.0, 0.2);
+    GraphicsDx11::CUDARender();
+
+    GraphicsDx11::FinishFrame();
+}
 
 // Helper function to convert const char* to std::wstring
 inline std::wstring ToWide(const char* str) {
@@ -16,17 +25,6 @@ inline std::wstring ToWide(const char* str) {
     // Remove the null terminator for MessageBox
     if (!wstr.empty() && wstr.back() == L'\0') wstr.pop_back();
     return wstr;
-}
-
-void Update() {
-	const float t = timer.Peek();
-	std::wostringstream oss{}; // Initialize oss
-	oss << L"Time Elapsed: " << std::setprecision(1) << std::fixed << t << L" sec";
-	Window::SetTitle(oss.str());
-
-    Renderer::ClearBuffer(1, 0, 0);
-    Renderer::DrawTestTriangle();
-    Renderer::FinishFrame();
 }
 
 int WINAPI wWinMain(
@@ -42,16 +40,28 @@ int WINAPI wWinMain(
 
     try {
         Window::Create(hInst, width, height, L"Nami Window Name Here", false, NULL);
-        Renderer::Init(Window::GetHandle());
+        GraphicsDx11::Init(Window::GetHandle());
 
+        GraphicsDx11::ContinueInit();
+        GraphicsDx11::InitTexturesAndRegisterWithCUDA();
+
+        //Init Scene and Renderer
+        Camera cam = Camera(float3(0, 0, 10), float3(0, 0, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
+		Scene scene = Scene(cam);
+		Renderer renderer = Renderer(Window::GetWidth(), Window::GetHeight());
+		
+        App app = App::CreateApp(scene, renderer);
+
+        Timer fpsTimer = Timer(); 
         // Game Loop
         while(true)
         {
             if (const auto exitCode = Window::ProcessMessages()) {
-                Renderer::Destroy();
+                GraphicsDx11::Destroy();
                 return *exitCode;
             }
             Update();
+            fpsTimer.UpdateWindowTitleWithTimer(true);
         }
     }
     catch (std::exception& e) {
