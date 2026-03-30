@@ -3,7 +3,7 @@
 
 namespace App {
 	void CreateApp(Renderer renderer, Scene scene);
-	Scene GetScene();
-	Camera GetCamera();
-	Renderer GetRenderer();
+	Scene& GetScene();
+	Camera& GetCamera();
+	Renderer& GetRenderer();
 }

@@ -15,17 +15,17 @@ void App::CreateApp(Renderer renderer, Scene scene){
     _renderer = renderer;
 }
 
-Scene App::GetScene()
+Scene& App::GetScene()
 {
     return _scene;
 }
 
-Camera App::GetCamera()
+Camera& App::GetCamera()
 {
     return _cam;
 }
 
-Renderer App::GetRenderer()
+Renderer& App::GetRenderer()
 {
     return _renderer;
 }

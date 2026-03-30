@@ -340,22 +340,30 @@ void GraphicsDx11::CUDARender()
 	std::wcout << "\t\tMapped Resources = " << timer.GetStringTime(true) << std::endl;
 #endif
 
-	// Populate the 2d texture
+	// Run relevant kernels
 	{
 		static float t = 0.0f;
+		cudaError_t err = cudaSuccess;
 
 		//////////////////////////////////////////
-		//App::renderer.Initialize(scene);
-		//App::GetRenderer().InitializeRays(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch, App::GetCamera().camDetails, t);
-		App::GetRenderer().TextureTest(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
+		App::GetRenderer().Initialize();
+		//err = cudaDeviceSynchronize();
+		//if (err != cudaSuccess) { throw std::exception("Synchronization Error: %s\n", err); }
+
+		App::GetRenderer().GenerateCameraRays(App::GetCamera().camDetails);
+		err = cudaDeviceSynchronize();
+		if (err != cudaSuccess) { throw std::exception("Some error: %s\n", err); }
+
+		App::GetRenderer().InitializeRays(Texture2D.cudaLinearMemory, Texture2D.pitch, App::GetCamera().camDetails, t);
+		//App::GetRenderer().TextureTest(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
 
 		//////////////////////////////////////////
 
-		cudaError_t err = cudaGetLastError();
+		err = cudaGetLastError();
 		if (err != cudaSuccess) { throw std::exception("Kernel launch error: %s\n"); }
 
 		err = cudaDeviceSynchronize();
-		if (err != cudaSuccess) { throw std::exception("Kernel execution error: %s\n");	}
+		if (err != cudaSuccess) { throw std::exception("Synchronization error: %s\n");	}
 		
 		t +=0.00f;
 	}
@@ -363,7 +371,7 @@ void GraphicsDx11::CUDARender()
 #if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
 	std::wcout << "\t\tRan Renderer = " << timer.GetStringTime(true) << std::endl;
 #endif
-	
+
 	// Copy cudaLinearMemory to the D3D texture using its mapped form : cudaArray
 	ce = cudaMemcpy2DToArray(cuArray, // dst array
 		0,

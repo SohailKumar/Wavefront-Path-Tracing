@@ -11,6 +11,10 @@ Timer timer;
 Timer fpsTimer;
 //#define TIMER_ANALYSIS
 
+#define WIDTH = 1280
+#define HEIGHT = 7200.
+
+
 void Update() {
     // timer.UpdateWindowTitleWithTimer();
     Timer updateTimer = Timer();
@@ -74,16 +78,19 @@ int WINAPI wWinMain(
         std::wcout << "\n\n";
 #endif
         // Game Loop
+        Update();
+
         while(true)
         {
             if (const auto exitCode = Window::ProcessMessages()) {
                 GraphicsDx11::Destroy();
                 return *exitCode;
             }
-            Update();
-            //fpsTimer.UpdateWindowTitleWithTimer(true);
+            //Update();
+            //fpsTimer.UpdateWindowTitleWithTimer(false);
 #if defined(DEBUG) | defined(_DEBUG)
-            std::wcout << fpsTimer.GetStringTime(true) << std::endl;
+            //std::wcout << fpsTimer.GetStringTime(true) << std::endl;
+
 #endif
         }
     }

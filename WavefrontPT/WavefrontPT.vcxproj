@@ -120,6 +120,7 @@
     <ClInclude Include="src\Core\Camera.h" />
     <ClInclude Include="src\Core\Scene.h" />
     <ClInclude Include="src\CUDA\Renderer.h" />
+    <ClInclude Include="src\CUDA\Structs.cuh" />
     <ClInclude Include="src\Utility\GraphicsDx11.h" />
     <ClInclude Include="src\Utility\Kernels.cuh" />
     <ClInclude Include="src\Utility\Timer.h" />
