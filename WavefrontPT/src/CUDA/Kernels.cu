@@ -2,6 +2,9 @@
 #include "helper_math.h"
 #include <stdio.h>
 
+#include <cooperative_groups.h>
+using namespace cg = cooperative_groups;
+
 __device__ static bool sphereIntersect(float3 rayOgn, float3 rayDir, float3 sphereCenter, float sphereRadius) {
     float3 oc = sphereCenter - rayOgn;
     float a = dot(rayDir, rayDir);
@@ -10,6 +13,7 @@ __device__ static bool sphereIntersect(float3 rayOgn, float3 rayDir, float3 sphe
     float discriminant = b * b - 4 * a * c;
     return (discriminant >= 0);
 }
+
 
 __global__ void cuda_InitTraceRay(unsigned char* surface, int width, int height, size_t pitch, CameraData camData, float t)
 {
@@ -109,6 +113,13 @@ __global__ void cuda_GenerateCameraRays(Paths paths, CameraData camData, uint32_
     float3 pointOnFilm = ogn + (camData.forward * 8) + (camData.right * u) + (camData.up * v);
     float3 rayDir = normalize(pointOnFilm - ogn);
     paths.rayDir[idx] = rayDir;
+
+
+    // Initialize other path variables
+    // MOVE TO ITS OWN KERNEL IF REGENERATING RAYS
+    paths.rayCount[idx] = -1; // first time this ray hits an object, it gets updated to 0 bounces
+    paths.sampled[idx] = false;
+    paths.rayHitMat[idx] = NO_HIT;
 }
 
 __global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount) {
@@ -127,12 +138,53 @@ __global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* 
     if (intersect)
     {
         // Hit a sphere: Red
-        paths.color[idx] = make_float4(0.56f, 0.0f, 0.26f, 1.0f);
+        //paths.color[idx] = make_float4(0.56f, 0.0f, 0.26f, 1.0f);
+        paths.rayHitMat[idx] = LAMBERTIAN;
     }
     else
     {
-        paths.color[idx] = make_float4(0.14f, 0.14f, 0.14f, 1.0f);
+        paths.rayHitMat[idx] = NO_HIT;
+        //paths.color[idx] = make_float4(0.14f, 0.14f, 0.14f, 1.0f);
     }
+}
+
+
+__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) {
+    size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx > maxPaths)
+        return;
+
+    // update throughput
+    paths.rayCount += 1;
+
+    // Ray Termination: x bounces, no hit, hit light
+    if (paths.rayCount[idx] >= 1) // allow 1 bounce
+    {
+        // kill
+        paths.color[idx] = make_float4(0.14f, 0.14f, 0.14f, 1.0f);
+        paths.sampled[idx] = true;
+        return;
+    }
+    
+    // Ray lives!
+
+    // add to material queue
+    // increment material queue count 
+    int matId = paths.rayHitMat[idx];
+    queues.materialQueue[idx] = idx;
+
+    // find all threads in the same warp with the same matID
+    auto mat_group = cg::labeled_partition(cg::this_warp(), matId);
+
+    int num_matches = mat_group.size();
+    int my_rank = mat_group.thread_rank();
+    
+    int global_offset;
+    if (my_rank == 0) {
+        global_offset = atomicAdd(queues.materialQueueCount[0], num_matches);
+    }
+
+    
 }
 
 __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t maxPaths, uint32_t width, uint32_t height, unsigned char* surface, size_t pitch) 

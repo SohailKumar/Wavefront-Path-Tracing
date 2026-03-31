@@ -15,6 +15,19 @@ Timer fpsTimer;
 #define HEIGHT = 7200.
 
 
+void CUDAChecks() {
+    cudaDeviceProp deviceProp;
+    // Get properties for device 0 (the first GPU)
+    cudaGetDeviceProperties(&deviceProp, 0);
+    int dev = 0;
+    int supportsCoopLaunch = 0;
+    cudaDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, dev);
+
+    std::cout << "Device name: " << deviceProp.name << std::endl;
+    std::cout << "Number of multiprocessors (SMs): " << deviceProp.multiProcessorCount << std::endl;
+    std::cout << "Supports coop launch: " << supportsCoopLaunch << std::endl << "DEV: " << dev << std::endl;
+}
+
 void Update() {
     // timer.UpdateWindowTitleWithTimer();
     Timer updateTimer = Timer();
@@ -62,6 +75,8 @@ int WINAPI wWinMain(
     try {
         Window::Create(hInst, width, height, L"Nami Window Name Here", false, NULL);
         GraphicsDx11::Init(Window::GetHandle());
+
+        CUDAChecks();
 
         GraphicsDx11::ContinueInit();
         GraphicsDx11::InitTexturesAndRegisterWithCUDA();
