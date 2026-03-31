@@ -42,9 +42,12 @@ public:
 		paths = Paths();
 	}
 
-	void Initialize();
-	void InitializeRays(void* surface, size_t pitch, CameraData camData, float t);
+	void Initialize(Scene &scene);
 	void GenerateCameraRays(CameraData camData);
+	void IntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount);
+	void PostProcess(void* surface, size_t pitch);
+
+	void InitializeRays(void* surface, size_t pitch, CameraData camData, float t);
 	void TextureTest(void* surface, uint32_t width, uint32_t height, size_t pitch);
 
 };

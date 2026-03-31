@@ -11,7 +11,7 @@ struct Paths {
 	float3* rayOgn;
 	float3* rayDir;
 	
-	float3* color;
+	float4* color;
 	//float3* throughput;
 	uint32_t* rayCount; // number of rays in current path sample  (bounces)
 	//uint32_t* pathCount; // number of samples
@@ -31,17 +31,16 @@ struct Paths {
 
 	void reallocatePaths(int width, int height) {
 		size_t totalPixels = static_cast<size_t>(width) * static_cast<size_t>(height);
-		size_t allocationSizeForFloat3 = totalPixels * sizeof(float3);
 
 		cudaError_t err = cudaSuccess;
 
-		err = cudaMallocManaged(&rayOgn, allocationSizeForFloat3);
+		err = cudaMallocManaged(&rayOgn, totalPixels * sizeof(float3));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
-		err = cudaMallocManaged(&rayDir, allocationSizeForFloat3);
+		err = cudaMallocManaged(&rayDir, totalPixels * sizeof(float3));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
-		err = cudaMallocManaged(&color, allocationSizeForFloat3);
+		err = cudaMallocManaged(&color, totalPixels * sizeof(float4));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
 		err = cudaMallocManaged(&rayCount, totalPixels * sizeof(uint32_t));

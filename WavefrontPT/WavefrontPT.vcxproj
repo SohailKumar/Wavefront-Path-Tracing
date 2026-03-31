@@ -122,7 +122,7 @@
     <ClInclude Include="src\CUDA\Renderer.h" />
     <ClInclude Include="src\CUDA\Structs.cuh" />
     <ClInclude Include="src\Utility\GraphicsDx11.h" />
-    <ClInclude Include="src\Utility\Kernels.cuh" />
+    <ClInclude Include="src\CUDA\Kernels.cuh" />
     <ClInclude Include="src\Utility\Timer.h" />
     <ClInclude Include="src\Utility\helper_math.h" />
     <ClInclude Include="src\Utility\Window.h" />

@@ -1,7 +1,7 @@
 #include "Renderer.h"
 #include <exception>
 
-void Renderer::Initialize()
+void Renderer::Initialize(Scene &scene)
 {
 	// TODO: Allocate memory for everything that needs to be in the VRAM. Camera, Paths (Triangles until Optix integrated)
 	// Use cudaOccupancyMaxPotentialBlockSize to maximize blocksize and gridsize for the functions
@@ -10,7 +10,7 @@ void Renderer::Initialize()
     paths.reallocatePaths(currWidth, currHeight);
 
     // Allocate memory for all objects for intersection kernel
-    
+    scene.CreateScene();
 
 }
 
@@ -23,6 +23,32 @@ void Renderer::GenerateCameraRays(CameraData camData) {
     error = cudaGetLastError();
     if (error != cudaSuccess) {
         throw std::exception("cuda_GenerateCameraRays() failed to launch error = %d\n", error);
+    }
+}
+
+void Renderer::IntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount)
+{
+    uint32_t maxPaths = currWidth * currHeight;
+    cudaError_t error = cudaSuccess;
+
+    cuda_IntersectionSpheres<<<gridSize, blockSize>>> (paths, maxPaths, sphereRadii, sphereCenters, sphereCount);
+
+    error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        throw std::exception("cuda_GenerateCameraRays() failed to launch error = %d\n", error);
+    }
+
+}
+
+void Renderer::PostProcess(void*  surface, size_t pitch) {
+    uint32_t maxPaths = currWidth * currHeight;
+    cudaError_t error = cudaSuccess;
+
+    cuda_PostProcessPathsAndWriteToSurface <<<imageGridSize, imageBlockSize >>> (paths, maxPaths, currWidth, currHeight,(unsigned char*)surface, pitch);
+
+    error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        throw std::exception("cuda_kernel_texture_2d() failed to launch error = %d\n", error);
     }
 }
 

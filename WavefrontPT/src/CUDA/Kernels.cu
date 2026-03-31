@@ -110,3 +110,48 @@ __global__ void cuda_GenerateCameraRays(Paths paths, CameraData camData, uint32_
     float3 rayDir = normalize(pointOnFilm - ogn);
     paths.rayDir[idx] = rayDir;
 }
+
+__global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount) {
+    size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx > maxPaths)
+        return;
+    
+    bool intersect = 0;
+
+    //Check for intersections
+    for (uint32_t i = 0; i < sphereCount; ++i) {
+        if (sphereIntersect(paths.rayOgn[idx], paths.rayDir[idx], sphereCenters[i], sphereRadii[i]))
+            intersect = 1;
+    }
+
+    if (intersect)
+    {
+        // Hit a sphere: Red
+        paths.color[idx] = make_float4(0.56f, 0.0f, 0.26f, 1.0f);
+    }
+    else
+    {
+        paths.color[idx] = make_float4(0.14f, 0.14f, 0.14f, 1.0f);
+    }
+}
+
+__global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t maxPaths, uint32_t width, uint32_t height, unsigned char* surface, size_t pitch) 
+{
+    //size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+    int    x = blockIdx.x * blockDim.x + threadIdx.x;
+    int    y = blockIdx.y * blockDim.y + threadIdx.y;
+    float* pixel;
+
+    if (x >= width || y >= height)
+        return;
+
+    int idx = (y * width) + x;
+
+    pixel = (float*)(surface + y * pitch) + 4 * x;
+
+    pixel[0] = paths.color[idx].x;
+    pixel[1] = paths.color[idx].y;
+    pixel[2] = paths.color[idx].z;
+    pixel[3] = paths.color[idx].w;
+}
+

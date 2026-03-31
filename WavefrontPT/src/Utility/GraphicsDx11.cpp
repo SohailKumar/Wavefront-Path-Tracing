@@ -345,16 +345,20 @@ void GraphicsDx11::CUDARender()
 		static float t = 0.0f;
 		cudaError_t err = cudaSuccess;
 
+		Renderer* renderer = &App::GetRenderer();
+
 		//////////////////////////////////////////
-		App::GetRenderer().Initialize();
+		renderer->Initialize(App::GetScene());
 		//err = cudaDeviceSynchronize();
 		//if (err != cudaSuccess) { throw std::exception("Synchronization Error: %s\n", err); }
 
-		App::GetRenderer().GenerateCameraRays(App::GetCamera().camDetails);
-		err = cudaDeviceSynchronize();
-		if (err != cudaSuccess) { throw std::exception("Some error: %s\n", err); }
+		renderer->GenerateCameraRays(App::GetCamera().camDetails);
+		//err = cudaDeviceSynchronize();
+		//if (err != cudaSuccess) { throw std::exception("Some error: %s\n", err); }
+		renderer->IntersectionKernel(App::GetScene().sphereRadii, App::GetScene().sphereCenters, App::GetScene().sphereCount);
+		renderer->PostProcess(Texture2D.cudaLinearMemory, Texture2D.pitch);
 
-		App::GetRenderer().InitializeRays(Texture2D.cudaLinearMemory, Texture2D.pitch, App::GetCamera().camDetails, t);
+		//App::GetRenderer().InitializeRays(Texture2D.cudaLinearMemory, Texture2D.pitch, App::GetCamera().camDetails, t);
 		//App::GetRenderer().TextureTest(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
 
 		//////////////////////////////////////////
