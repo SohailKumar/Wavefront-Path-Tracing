@@ -11,7 +11,7 @@ __global__ void cuda_GenerateCameraRays(Paths paths, CameraData camData, uint32_
 
 __global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount);
 
-__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, uint32_t* sphereIntersectedCount);
+__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues);
 
 __global__ void cuda_MATLambertian(Paths paths, uint32_t* materialQueueCount, uint32_t* MATLambertianQueue);
 

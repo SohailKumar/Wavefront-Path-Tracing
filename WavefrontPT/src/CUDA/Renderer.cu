@@ -46,19 +46,12 @@ void Renderer::LogicKernel()
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    uint32_t* sphereIntersectedCount;
-    error = cudaMallocManaged(&sphereIntersectedCount, sizeof(uint32_t));
-
-    cuda_LogicKernel <<<gridSize, blockSize >>> (paths, maxPaths, queues, sphereIntersectedCount);
+    cuda_LogicKernel <<<gridSize, blockSize >>> (paths, maxPaths, queues);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
         throw std::exception("cuda_kernel_texture_2d() failed to launch error = %d\n", error);
     }
-
-    //cudaDeviceSynchronize();
-
-    //std::cout << "Lambert Count: " << queues.materialQueueCount[0] << std::endl;
 }
 
 void Renderer::RunMaterialShaders() {

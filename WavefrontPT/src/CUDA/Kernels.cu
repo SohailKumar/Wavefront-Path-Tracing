@@ -149,7 +149,7 @@ __global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* 
 }
 
 
-__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, uint32_t* sphereIntersectedCount) {
+__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;
@@ -160,7 +160,6 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
     // Ray Termination: x bounces, no hit, hit light
     if (paths.rayCount[idx] <= 1) // allow 1 bounce
     {
-        atomicAdd(&sphereIntersectedCount[0], 1);
         // kill
         paths.color[idx] = make_float4(0.14f, 0.14f, 0.14f, 1.0f);
         paths.sampled[idx] = true;
