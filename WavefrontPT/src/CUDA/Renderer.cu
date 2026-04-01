@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include <exception>
+#include <iostream>
 
 void Renderer::Initialize(Scene &scene)
 {
@@ -38,6 +39,37 @@ void Renderer::IntersectionKernel(float* sphereRadii, float3* sphereCenters, uin
         throw std::exception("cuda_GenerateCameraRays() failed to launch error = %d\n", error);
     }
 
+}
+
+void Renderer::LogicKernel()
+{
+    uint32_t maxPaths = currWidth * currHeight;
+    cudaError_t error = cudaSuccess;
+
+    uint32_t* sphereIntersectedCount;
+    error = cudaMallocManaged(&sphereIntersectedCount, sizeof(uint32_t));
+
+    cuda_LogicKernel <<<gridSize, blockSize >>> (paths, maxPaths, queues, sphereIntersectedCount);
+
+    error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        throw std::exception("cuda_kernel_texture_2d() failed to launch error = %d\n", error);
+    }
+
+    //cudaDeviceSynchronize();
+
+    //std::cout << "Lambert Count: " << queues.materialQueueCount[0] << std::endl;
+}
+
+void Renderer::RunMaterialShaders() {
+    cudaError_t error = cudaSuccess;
+
+    cuda_MATLambertian << <gridSize, blockSize >> > (paths, queues.materialQueueCount, queues.MATLambertianQueue);
+
+    error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        throw std::exception("cuda_GenerateCameraRays() failed to launch error = %d\n", error);
+    }
 }
 
 void Renderer::PostProcess(void*  surface, size_t pitch) {

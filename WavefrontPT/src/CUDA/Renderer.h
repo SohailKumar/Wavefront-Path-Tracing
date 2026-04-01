@@ -7,6 +7,7 @@
 class Renderer {
 private:
 	Paths paths; // all paths
+	Queues queues;
 
 public: 
 	dim3 imageBlockSize;  // threads per block for writing to image buffer
@@ -26,6 +27,7 @@ public:
 		currWidth = 1280;
 		currHeight = 720;
 		paths = Paths();
+		queues = Queues(currWidth, currHeight);
 	}
 
 	Renderer(int width, int height) {
@@ -40,11 +42,14 @@ public:
 		currHeight = height;
 
 		paths = Paths();
+		queues = Queues(currWidth, currHeight);
 	}
 
 	void Initialize(Scene &scene);
 	void GenerateCameraRays(CameraData camData);
 	void IntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount);
+	void LogicKernel();
+	void RunMaterialShaders();
 	void PostProcess(void* surface, size_t pitch);
 
 	void InitializeRays(void* surface, size_t pitch, CameraData camData, float t);

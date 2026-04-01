@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include <cooperative_groups.h>
-using namespace cg = cooperative_groups;
+namespace cg = cooperative_groups;
 
 __device__ static bool sphereIntersect(float3 rayOgn, float3 rayDir, float3 sphereCenter, float sphereRadius) {
     float3 oc = sphereCenter - rayOgn;
@@ -149,7 +149,7 @@ __global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* 
 }
 
 
-__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) {
+__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, uint32_t* sphereIntersectedCount) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;
@@ -158,8 +158,9 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) 
     paths.rayCount += 1;
 
     // Ray Termination: x bounces, no hit, hit light
-    if (paths.rayCount[idx] >= 1) // allow 1 bounce
+    if (paths.rayCount[idx] <= 1) // allow 1 bounce
     {
+        atomicAdd(&sphereIntersectedCount[0], 1);
         // kill
         paths.color[idx] = make_float4(0.14f, 0.14f, 0.14f, 1.0f);
         paths.sampled[idx] = true;
@@ -171,20 +172,39 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) 
     // add to material queue
     // increment material queue count 
     int matId = paths.rayHitMat[idx];
-    queues.materialQueue[idx] = idx;
+    if (matId < LAMBERTIAN) { // matId = NO_HIT, EXIT_SCENE
+        return;
+    }
+
+    int matQueueIdx = matId - 2;
+    //queues.materialQueue[matQueueIdx];
 
     // find all threads in the same warp with the same matID
-    auto mat_group = cg::labeled_partition(cg::this_warp(), matId);
+    auto g = cg::coalesced_threads();
+    auto mat_group = cg::labeled_partition(g, matId);
 
     int num_matches = mat_group.size();
     int my_rank = mat_group.thread_rank();
     
+    // leader atomically adds to the material count
     int global_offset;
     if (my_rank == 0) {
-        global_offset = atomicAdd(queues.materialQueueCount[0], num_matches);
+        global_offset = atomicAdd(&queues.materialQueueCount[matQueueIdx], num_matches);
     }
 
+    // broadcast offset to the rest of the threads in the warp
+    global_offset = mat_group.shfl(global_offset, 0);
+
+    // write ray index to this material's queue
+    queues.materialQueue[matQueueIdx][global_offset + my_rank] = idx;
+}
+
+__global__ void cuda_MATLambertian(Paths paths, uint32_t* materialQueueCount, uint32_t* MATLambertianQueue) {
+    size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx > materialQueueCount[LAMBERTIAN-2])
+        return;
     
+    paths.color[MATLambertianQueue[idx]] = make_float4(0.56f, 0.0f, 0.26f, 1.0f);
 }
 
 __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t maxPaths, uint32_t width, uint32_t height, unsigned char* surface, size_t pitch) 
