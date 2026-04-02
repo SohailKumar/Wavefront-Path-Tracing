@@ -71,11 +71,11 @@ struct Paths {
 	}
 };
 
-#define AVAILABLE_MATS 1
+#define AVAILABLE_MAT_TYPES 1
 
 struct Queues 
 {
-	uint32_t* materialQueue[AVAILABLE_MATS];
+	uint32_t* materialQueue[AVAILABLE_MAT_TYPES];
 	uint32_t* materialQueueCount;
 
 	uint32_t* MATLambertianQueue;
@@ -97,11 +97,19 @@ struct Queues
 
 		materialQueue[0] = MATLambertianQueue;
 
-		err = cudaMallocManaged(&materialQueueCount, AVAILABLE_MATS * sizeof(uint32_t));
+		err = cudaMallocManaged(&materialQueueCount, AVAILABLE_MAT_TYPES * sizeof(uint32_t));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
 	};
 
 	~Queues() {
 	}
+};
+
+struct MaterialData {
+	struct LambertianData {
+		float3 albedo;
+	};
+
+	
 };
