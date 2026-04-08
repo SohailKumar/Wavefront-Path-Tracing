@@ -355,7 +355,7 @@ void GraphicsDx11::CUDARender()
 		renderer->GenerateCameraRays(App::GetCamera().camDetails);
 		renderer->IntersectionKernel(App::GetScene().sphereRadii, App::GetScene().sphereCenters, App::GetScene().sphereCount);
 		renderer->LogicKernel();
-		renderer->RunMaterialShaders();
+		renderer->RunMaterialShaders(App::GetScene().albedoDiffuse, App::GetScene().albedoSpecular, App::GetScene().shininess, App::GetScene().sphereCount);
 		
 		renderer->PostProcess(Texture2D.cudaLinearMemory, Texture2D.pitch);
 

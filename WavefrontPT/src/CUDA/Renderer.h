@@ -49,7 +49,7 @@ public:
 	void GenerateCameraRays(CameraData camData);
 	void IntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount);
 	void LogicKernel();
-	void RunMaterialShaders();
+	void RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount);
 	void PostProcess(void* surface, size_t pitch);
 
 	void InitializeRays(void* surface, size_t pitch, CameraData camData, float t);

@@ -1,4 +1,6 @@
+#pragma once
 #include <exception>
+#include <curand_kernel.h>
 
 struct Ray {
 	float3 ogn;
@@ -6,10 +8,10 @@ struct Ray {
 };
 
 
-enum MaterialID {
+enum MaterialTypeID {
 	NO_HIT,
 	EXIT_SCENE,
-	LAMBERTIAN
+	BLINNPHONG
 };
 
 struct Paths {
@@ -18,26 +20,53 @@ struct Paths {
 	float3* rayDir;
 	
 	float4* color;
-	//float3* throughput;
+	float3* throughput;
 	uint32_t* rayCount; // number of rays in current path sample  (bounces)
 	//uint32_t* pathCount; // number of samples	
+
 	bool* sampled; 
 
-
 	uint32_t* rayHitMat;
+	uint32_t* rayHitMatID;
+
+	float3* lightRayDir;
+
+	float3* ExtBRDFColor;
+	float* ExtBRDFColorPDF;
+	float3* LightBRDFColor;
+	float* LightBRDFColorPDF;
+
+	curandState* randomNo;
+
+	//intersection data
+	float3* rayHitNormal;
+	float3* rayHitInDir;
 
 	Paths()
 	{
 		rayOgn = {};
 		rayDir = {};
 		color = {};
-		//throughput = {};
+		throughput = {};
 		rayCount = {};
 
 		//pathCount = {};
 
 		sampled = {};
 		rayHitMat = {};
+		rayHitMatID = {};
+		//intersection normal
+		//intersection input dir
+		
+		lightRayDir = {};
+		ExtBRDFColor = {};
+		ExtBRDFColorPDF = {};
+		LightBRDFColor = {};
+		LightBRDFColorPDF = {};
+		randomNo = {};
+
+		rayHitNormal = {};
+		rayHitInDir = {};
 	};
 	~Paths() {
 	}
@@ -56,8 +85,13 @@ struct Paths {
 		err = cudaMallocManaged(&color, totalPixels * sizeof(float4));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
+		err = cudaMallocManaged(&throughput, totalPixels * sizeof(float3));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
 		err = cudaMallocManaged(&rayCount, totalPixels * sizeof(uint32_t));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+
 
 		err = cudaMallocManaged(&sampled, totalPixels * sizeof(bool));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
@@ -65,9 +99,35 @@ struct Paths {
 		err = cudaMallocManaged(&rayHitMat, totalPixels * sizeof(uint32_t));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
-		//cudaMallocManaged(reinterpret_cast<void**>(&throughput), width * height * sizeof(float3));
-		//cudaMallocManaged(reinterpret_cast<void**>(&pathCount), width * height * sizeof(uint32_t));
+		err = cudaMallocManaged(&rayHitMatID, totalPixels * sizeof(uint32_t));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
+		//cudaMallocManaged(reinterpret_cast<void**>(&pathCount), width * height * sizeof(uint32_t));
+		err = cudaMallocManaged(&lightRayDir, totalPixels * sizeof(float3));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		err = cudaMallocManaged(&ExtBRDFColor, totalPixels * sizeof(float3));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		err = cudaMallocManaged(&ExtBRDFColorPDF, totalPixels * sizeof(float));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		err = cudaMallocManaged(&LightBRDFColor, totalPixels * sizeof(float3));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		err = cudaMallocManaged(&LightBRDFColorPDF, totalPixels * sizeof(float));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		
+		err = cudaMallocManaged(&randomNo, totalPixels * sizeof(curandState));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		err = cudaMallocManaged(&rayHitNormal, totalPixels * sizeof(float3));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		err = cudaMallocManaged(&rayHitInDir, totalPixels * sizeof(float3));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+			
 	}
 };
 
@@ -75,15 +135,21 @@ struct Paths {
 
 struct Queues 
 {
+	uint32_t* extensionRayQueue;
+	uint32_t* shadowRayQueue;
+
 	uint32_t* materialQueue[AVAILABLE_MAT_TYPES];
 	uint32_t* materialQueueCount;
 
-	uint32_t* MATLambertianQueue;
+	uint32_t* MATBlinnPhongQueue;
 
 	Queues()
 	{
+		extensionRayQueue = {};
+		shadowRayQueue = {};
+
 		materialQueueCount = {};
-		MATLambertianQueue = {};
+		MATBlinnPhongQueue = {};
 	};
 
 	Queues(uint32_t width, uint32_t height)
@@ -92,14 +158,22 @@ struct Queues
 
 		cudaError_t err = cudaSuccess;
 
-		err = cudaMallocManaged(&MATLambertianQueue, totalPixels * sizeof(uint32_t));
+		err = cudaMallocManaged(&extensionRayQueue, totalPixels * sizeof(uint32_t));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
-		materialQueue[0] = MATLambertianQueue;
+		err = cudaMallocManaged(&extensionRayQueue, totalPixels * sizeof(uint32_t));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+
+		// material queues
+
+		err = cudaMallocManaged(&MATBlinnPhongQueue, totalPixels * sizeof(uint32_t));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		materialQueue[0] = MATBlinnPhongQueue;
 
 		err = cudaMallocManaged(&materialQueueCount, AVAILABLE_MAT_TYPES * sizeof(uint32_t));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
-
 	};
 
 	~Queues() {
@@ -107,8 +181,10 @@ struct Queues
 };
 
 struct MaterialData {
-	struct LambertianData {
-		float3 albedo;
+	struct BlinnPhongData {
+		float3 diffuseColor;
+		float3 specularColor;
+		float shininess;
 	};
 
 	

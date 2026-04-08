@@ -54,10 +54,10 @@ void Renderer::LogicKernel()
     }
 }
 
-void Renderer::RunMaterialShaders() {
+void Renderer::RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount) {
     cudaError_t error = cudaSuccess;
 
-    cuda_MATLambertian << <gridSize, blockSize >> > (paths, queues.materialQueueCount, queues.MATLambertianQueue);
+    cuda_MATBlinnPhong << <gridSize, blockSize >> > (paths, queues.materialQueueCount, queues.MATBlinnPhongQueue, albedoDiffuse, albedoSpecular, shininess, sphereCount);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {

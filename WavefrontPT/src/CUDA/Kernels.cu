@@ -1,19 +1,13 @@
 #include "Kernels.cuh"
-#include "helper_math.h"
+#include "GPUUtil.cuh"
 #include <stdio.h>
+#include <curand_kernel.h>
+#include <iostream>
 
 #include <cooperative_groups.h>
 namespace cg = cooperative_groups;
 
-__device__ static bool sphereIntersect(float3 rayOgn, float3 rayDir, float3 sphereCenter, float sphereRadius) {
-    float3 oc = sphereCenter - rayOgn;
-    float a = dot(rayDir, rayDir);
-    float b = -2.0f * dot(rayDir, oc);
-    float c = dot(oc, oc) - sphereRadius * sphereRadius;
-    float discriminant = b * b - 4 * a * c;
-    return (discriminant >= 0);
-}
-
+#define RANDOM_SEED 1
 
 __global__ void cuda_InitTraceRay(unsigned char* surface, int width, int height, size_t pitch, CameraData camData, float t)
 {
@@ -44,8 +38,11 @@ __global__ void cuda_InitTraceRay(unsigned char* surface, int width, int height,
     float3 rayDir = normalize(pointOnFilm - ogn);
 
     //// Simple Sphere at (0, 0, 5) with radius 1.0
-    bool sphere1 = sphereIntersect(ogn, rayDir, make_float3(0, 0, -5), 1.0f);
-    bool sphere2 = sphereIntersect(ogn, rayDir, make_float3(-2, 3, -20), 1.0f);
+    float3 hitPoint = {};
+    float3 normal = {};
+
+    bool sphere1 = sphereIntersect(ogn, rayDir, make_float3(0, 0, -5), 1.0f, hitPoint, normal);
+    bool sphere2 = sphereIntersect(ogn, rayDir, make_float3(-2, 3, -20), 1.0f, hitPoint, normal);
 
     if (sphere1)
     {
@@ -94,7 +91,7 @@ __global__ void cuda_kernel_texture_2d(unsigned char* surface, int width, int he
 
 __global__ void cuda_GenerateCameraRays(Paths paths, CameraData camData, uint32_t maxPaths, uint32_t width, uint32_t height)
 {
-    size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;
 
@@ -120,6 +117,10 @@ __global__ void cuda_GenerateCameraRays(Paths paths, CameraData camData, uint32_
     paths.rayCount[idx] = -1; // first time this ray hits an object, it gets updated to 0 bounces
     paths.sampled[idx] = false;
     paths.rayHitMat[idx] = NO_HIT;
+
+    //paths.randomSeed = 
+    //curand_init(1, id, )
+    curand_init(RANDOM_SEED, idx, 0, &paths.randomNo[idx]);
 }
 
 __global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount) {
@@ -131,20 +132,22 @@ __global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* 
 
     //Check for intersections
     for (uint32_t i = 0; i < sphereCount; ++i) {
-        if (sphereIntersect(paths.rayOgn[idx], paths.rayDir[idx], sphereCenters[i], sphereRadii[i]))
+        float3 hitPoint = {};
+        float3 normal = make_float3(1.0, 1.0, 0.0);
+        if (sphereIntersect(paths.rayOgn[idx], paths.rayDir[idx], sphereCenters[i], sphereRadii[i], hitPoint, normal)) {
             intersect = 1;
+            paths.rayHitMatID[idx] = i;
+            paths.rayHitMat[idx] = BLINNPHONG;
+            paths.rayHitInDir[idx] = paths.rayDir[idx];
+            paths.rayHitNormal[idx] = normal;
+            break;
+        }
     }
 
-    if (intersect)
-    {
-        // Hit a sphere: Red
-        //paths.color[idx] = make_float4(0.56f, 0.0f, 0.26f, 1.0f);
-        paths.rayHitMat[idx] = LAMBERTIAN;
-    }
-    else
+
+    if(!intersect)
     {
         paths.rayHitMat[idx] = NO_HIT;
-        //paths.color[idx] = make_float4(0.14f, 0.14f, 0.14f, 1.0f);
     }
 }
 
@@ -168,10 +171,8 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) 
     
     // Ray lives!
 
-    // add to material queue
-    // increment material queue count 
     int matId = paths.rayHitMat[idx];
-    if (matId < LAMBERTIAN) { // matId = NO_HIT, EXIT_SCENE
+    if (matId < BLINNPHONG) { // matId = NO_HIT, EXIT_SCENE
         return;
     }
 
@@ -198,12 +199,24 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) 
     queues.materialQueue[matQueueIdx][global_offset + my_rank] = idx;
 }
 
-__global__ void cuda_MATLambertian(Paths paths, uint32_t* materialQueueCount, uint32_t* MATLambertianQueue) {
+__global__ void cuda_MATBlinnPhong(Paths paths, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx > materialQueueCount[LAMBERTIAN-2])
+    if (idx > materialQueueCount[BLINNPHONG-2])
         return;
-    
-    paths.color[MATLambertianQueue[idx]] = make_float4(0.56f, 0.0f, 0.26f, 1.0f);
+
+    size_t currPathIdx = MATBlinnPhongQueue[idx];
+    size_t matIdx = paths.rayHitMatID[currPathIdx];
+
+    curandState localRandState = paths.randomNo[currPathIdx];
+
+    //paths.color[MATBlinnPhongQueue[idx]] = make_float4(0.56f, 0.0f, 0.26f, 1.0f);
+    float3 normal = paths.rayHitNormal[currPathIdx];
+    float3 outDir = make_float3(0.0, 0.0f, 0.0f);
+    float3 inDir = paths.rayDir[currPathIdx];
+
+    paths.color[MATBlinnPhongQueue[idx]] = make_float4(evaluateBRDF<BLINNPHONG>(normal, outDir, inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]), 1.0f);
+
+    paths.randomNo[currPathIdx] = localRandState;
 }
 
 __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t maxPaths, uint32_t width, uint32_t height, unsigned char* surface, size_t pitch) 

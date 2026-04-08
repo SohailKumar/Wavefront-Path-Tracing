@@ -13,6 +13,6 @@ __global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* 
 
 __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues);
 
-__global__ void cuda_MATLambertian(Paths paths, uint32_t* materialQueueCount, uint32_t* MATLambertianQueue);
+__global__ void cuda_MATBlinnPhong(Paths paths, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount);
 
 __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t maxPaths, uint32_t width, uint32_t height, unsigned char* surface, size_t pitch);
