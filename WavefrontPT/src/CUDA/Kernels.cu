@@ -89,7 +89,7 @@ __global__ void cuda_kernel_texture_2d(unsigned char* surface, int width, int he
     pixel[3] = 1;
 }
 
-__global__ void cuda_GenerateCameraRays(Paths paths, CameraData camData, uint32_t maxPaths, uint32_t width, uint32_t height)
+__global__ void cuda_GenerateCameraRays(Paths paths, Queues queues, CameraData camData, uint32_t maxPaths, uint32_t width, uint32_t height)
 {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
@@ -121,9 +121,14 @@ __global__ void cuda_GenerateCameraRays(Paths paths, CameraData camData, uint32_
     //paths.randomSeed = 
     //curand_init(1, id, )
     curand_init(RANDOM_SEED, idx, 0, &paths.randomNo[idx]);
+
+    // Increase extension queue count
+    int offset = atomicAdd(queues.extensionRayQueueCount, 1);
+    // Add to extensionRayQueue
+	queues.extensionRayQueue[offset] = idx;
 }
 
-__global__ void cuda_Intersection(Paths paths, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
+__global__ void cuda_Intersection(Paths paths, Queues queues, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;

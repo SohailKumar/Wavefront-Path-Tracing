@@ -19,7 +19,13 @@ void Renderer::GenerateCameraRays(CameraData camData) {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_GenerateCameraRays<<<gridSize, blockSize>>>(paths, camData, maxPaths, currWidth, currHeight);
+    cuda_GenerateCameraRays<<<gridSize, blockSize>>>(paths, queues, camData, maxPaths, currWidth, currHeight);
+    
+  //  cudaDeviceSynchronize();
+  //  std::cout << "ExtensionRay Count: " << *queues.extensionRayQueueCount << std::endl;
+  //  for (int i = 0; i < 10; i++) {
+		//std::cout << "ExtensionRayQueue[" << i << "]: " << queues.extensionRayQueue[i] << std::endl;
+  //  }
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
@@ -32,7 +38,7 @@ void Renderer::IntersectionKernel(float* sphereRadii, float3* sphereCenters, uin
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_Intersection<<<gridSize, blockSize>>> (paths, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount, lightTriA, lightTriB, lightTriC, lightCount);
+    cuda_Intersection<<<gridSize, blockSize>>> (paths, queues, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount, lightTriA, lightTriB, lightTriC, lightCount);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
@@ -57,11 +63,18 @@ void Renderer::LogicKernel()
 void Renderer::RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
     cudaError_t error = cudaSuccess;
 
+	//TODO change gridSize and blockSize based on material queue count for better occupancy
     cuda_MATBlinnPhong << <gridSize, blockSize >> > (paths, queues.materialQueueCount, queues.MATBlinnPhongQueue, albedoDiffuse, albedoSpecular, shininess, sphereCount, lightTriA, lightTriB, lightTriC, lightCount);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
         throw std::exception("cuda_GenerateCameraRays() failed to launch error = %d\n", error);
+    }
+
+    // reset material queue count for next frame
+    error = cudaMemsetAsync(queues.materialQueueCount, 0, AVAILABLE_MAT_TYPES * sizeof(uint32_t));
+    if (error != cudaSuccess) {
+        throw std::exception("memsetAsync() failed to launch error = %d\n", error);
     }
 }
 

@@ -137,13 +137,15 @@ struct Paths {
 
 struct Queues 
 {
-	uint32_t* extensionRayQueue;
-	uint32_t* shadowRayQueue;
+	uint32_t* extensionRayQueue = {};
+	uint32_t* extensionRayQueueCount = 0;
+	uint32_t* shadowRayQueue = {};
+	uint32_t* shadowRayQueueCount = 0;
 
-	uint32_t* materialQueue[AVAILABLE_MAT_TYPES];
-	uint32_t* materialQueueCount;
+	uint32_t* materialQueue[AVAILABLE_MAT_TYPES] = {};
+	uint32_t* materialQueueCount = {};
 
-	uint32_t* MATBlinnPhongQueue;
+	uint32_t* MATBlinnPhongQueue = {};
 
 	Queues()
 	{
@@ -163,7 +165,13 @@ struct Queues
 		err = cudaMallocManaged(&extensionRayQueue, totalPixels * sizeof(uint32_t));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
-		err = cudaMallocManaged(&extensionRayQueue, totalPixels * sizeof(uint32_t));
+		err = cudaMallocManaged(&extensionRayQueueCount, sizeof(uint32_t));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		err = cudaMallocManaged(&shadowRayQueue, totalPixels * sizeof(uint32_t));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		err = cudaMallocManaged(&shadowRayQueueCount, sizeof(uint32_t));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
 
