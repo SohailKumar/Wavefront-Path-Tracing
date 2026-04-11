@@ -33,12 +33,12 @@ void Renderer::GenerateCameraRays(CameraData camData) {
     }
 }
 
-void Renderer::IntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount)
+void Renderer::ExtensionRayIntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount)
 {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_Intersection<<<gridSize, blockSize>>> (paths, queues, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount, lightTriA, lightTriB, lightTriC, lightCount);
+    cuda_ExtensionRayIntersection<<<gridSize, blockSize>>> (paths, queues, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount, lightTriA, lightTriB, lightTriC, lightCount);
     error = cudaMemsetAsync(queues.extensionRayQueueCount, 0, sizeof(uint32_t));
     if (error != cudaSuccess) {
         throw std::exception("memsetAsync() failed to launch error = %d\n", error);

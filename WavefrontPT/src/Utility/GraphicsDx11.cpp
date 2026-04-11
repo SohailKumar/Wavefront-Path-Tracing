@@ -348,7 +348,7 @@ void GraphicsDx11::CUDARender()
 
 		renderer->GenerateCameraRays(App::GetCamera().camDetails);
 
-		renderer->IntersectionKernel(App::GetScene().sphereRadii, App::GetScene().sphereCenters, App::GetScene().sphereCount, App::GetScene().planeTriA, App::GetScene().planeTriB, App::GetScene().planeTriC, App::GetScene().planeTriCount, App::GetScene().lightTriA, App::GetScene().lightTriB, App::GetScene().lightTriC, App::GetScene().lightCount);
+		renderer->ExtensionRayIntersectionKernel(App::GetScene().sphereRadii, App::GetScene().sphereCenters, App::GetScene().sphereCount, App::GetScene().planeTriA, App::GetScene().planeTriB, App::GetScene().planeTriC, App::GetScene().planeTriCount, App::GetScene().lightTriA, App::GetScene().lightTriB, App::GetScene().lightTriC, App::GetScene().lightCount);
 		renderer->LogicKernel();
 		renderer->RunMaterialShaders(App::GetScene().albedoDiffuse, App::GetScene().albedoSpecular, App::GetScene().shininess, App::GetScene().sphereCount, App::GetScene().lightTriA, App::GetScene().lightTriB, App::GetScene().lightTriC, App::GetScene().lightCount);
 		
