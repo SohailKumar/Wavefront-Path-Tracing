@@ -129,10 +129,12 @@ __global__ void cuda_GenerateCameraRays(Paths paths, Queues queues, CameraData c
 }
 
 __global__ void cuda_Intersection(Paths paths, Queues queues, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
-    size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx > maxPaths)
+    size_t threadidx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (threadidx >= *queues.extensionRayQueueCount)
         return;
     
+	size_t idx = queues.extensionRayQueue[threadidx];
+
     bool intersect = 0;
 
     //Check for intersections 

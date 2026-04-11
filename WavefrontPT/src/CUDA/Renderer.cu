@@ -39,6 +39,10 @@ void Renderer::IntersectionKernel(float* sphereRadii, float3* sphereCenters, uin
     cudaError_t error = cudaSuccess;
 
     cuda_Intersection<<<gridSize, blockSize>>> (paths, queues, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount, lightTriA, lightTriB, lightTriC, lightCount);
+    error = cudaMemsetAsync(queues.extensionRayQueueCount, 0, sizeof(uint32_t));
+    if (error != cudaSuccess) {
+        throw std::exception("memsetAsync() failed to launch error = %d\n", error);
+    }
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
