@@ -82,7 +82,7 @@ int WINAPI wWinMain(
         GraphicsDx11::InitTexturesAndRegisterWithCUDA();
 
         //Init Scene and Renderer
-        Camera cam = Camera(float3(0, 0, 10), float3(0, 0, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
+        Camera cam = Camera(float3(0, 0.5, 10), float3(0, 0.5, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
 		Scene scene = Scene(cam);
 		Renderer renderer = Renderer(Window::GetWidth(), Window::GetHeight());
 		

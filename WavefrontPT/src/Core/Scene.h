@@ -8,6 +8,11 @@ public:
 
 	float* sphereRadii = {};
 	float3* sphereCenters = {};
+
+	float3* planeTriA  = {};
+	float3* planeTriB  = {};
+	float3* planeTriC  = {};
+
 	uint32_t* materialTypeID = {};
 
 	float3* albedoDiffuse = {};
@@ -15,12 +20,14 @@ public:
 	float* shininess = {};
 
 	uint32_t sphereCount = 0;
+	uint32_t planeTriCount = 0;
+	uint32_t objectCount = 0;
 
-
-	float3* lightCenters = {};
+	float3* lightTriA = {};
+	float3* lightTriB = {};
+	float3* lightTriC = {};
 	float3* lightColors = {};
 	float* lightIntensity = {};
-	float* lightRadius = {};
 
 	uint32_t lightCount = 0;
 	

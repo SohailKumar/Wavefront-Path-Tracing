@@ -7,10 +7,12 @@ struct Ray {
 	float3 dir;
 };
 
+#define TYPES_BEFORE_BLINNPHONG 3
 
 enum MaterialTypeID {
 	NO_HIT,
 	EXIT_SCENE,
+	LIGHT,
 	BLINNPHONG
 };
 
@@ -40,7 +42,7 @@ struct Paths {
 
 	//intersection data
 	float3* rayHitNormal;
-	float3* rayHitInDir;
+	float3* rayHitPoint;
 
 	Paths()
 	{
@@ -66,7 +68,7 @@ struct Paths {
 		randomNo = {};
 
 		rayHitNormal = {};
-		rayHitInDir = {};
+		rayHitPoint = {};
 	};
 	~Paths() {
 	}
@@ -125,7 +127,7 @@ struct Paths {
 		err = cudaMallocManaged(&rayHitNormal, totalPixels * sizeof(float3));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
-		err = cudaMallocManaged(&rayHitInDir, totalPixels * sizeof(float3));
+		err = cudaMallocManaged(&rayHitPoint, totalPixels * sizeof(float3));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 			
 	}

@@ -123,7 +123,7 @@ __global__ void cuda_GenerateCameraRays(Paths paths, CameraData camData, uint32_
     curand_init(RANDOM_SEED, idx, 0, &paths.randomNo[idx]);
 }
 
-__global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount) {
+__global__ void cuda_Intersection(Paths paths, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;
@@ -131,16 +131,34 @@ __global__ void cuda_IntersectionSpheres(Paths paths, uint32_t maxPaths, float* 
     bool intersect = 0;
 
     //Check for intersections
-    for (uint32_t i = 0; i < sphereCount; ++i) {
-        float3 hitPoint = {};
-        float3 normal = make_float3(1.0, 1.0, 0.0);
-        if (sphereIntersect(paths.rayOgn[idx], paths.rayDir[idx], sphereCenters[i], sphereRadii[i], hitPoint, normal)) {
-            intersect = 1;
-            paths.rayHitMatID[idx] = i;
-            paths.rayHitMat[idx] = BLINNPHONG;
-            paths.rayHitInDir[idx] = paths.rayDir[idx];
-            paths.rayHitNormal[idx] = normal;
-            break;
+    float3 hitPoint = {};
+    float3 normal = make_float3(1.0, 1.0, 0.0);
+
+    // check spheres
+    if (!intersect) {
+        for (uint32_t i = 0; i < sphereCount; ++i) {
+            if (sphereIntersect(paths.rayOgn[idx], paths.rayDir[idx], sphereCenters[i], sphereRadii[i], hitPoint, normal)) {
+                intersect = 1;
+                paths.rayHitMatID[idx] = i;
+                paths.rayHitMat[idx] = BLINNPHONG;
+                paths.rayHitPoint[idx] = hitPoint;
+                paths.rayHitNormal[idx] = normal;
+                break;
+            }
+        }
+    }
+
+    // check plane triangles
+    if (!intersect) {
+        for (uint32_t i = 0; i < planeTriCount; ++i) {
+            if (planeTriIntersect(paths.rayOgn[idx], paths.rayDir[idx], planeTriA[i], planeTriB[i], planeTriC[i], hitPoint, normal)) {
+                intersect = 1;
+                paths.rayHitMatID[idx] = sphereCount + i;
+                paths.rayHitMat[idx] = BLINNPHONG;
+                paths.rayHitPoint[idx] = hitPoint;
+                paths.rayHitNormal[idx] = normal;
+                break;
+            }
         }
     }
 
@@ -172,11 +190,11 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) 
     // Ray lives!
 
     int matId = paths.rayHitMat[idx];
-    if (matId < BLINNPHONG) { // matId = NO_HIT, EXIT_SCENE
+    if (matId < BLINNPHONG) { // matId = NO_HIT, EXIT_SCENE, LIGHT
         return;
     }
 
-    int matQueueIdx = matId - 2;
+    int matQueueIdx = matId - BLINNPHONG;
     //queues.materialQueue[matQueueIdx];
 
     // find all threads in the same warp with the same matID
@@ -199,9 +217,9 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) 
     queues.materialQueue[matQueueIdx][global_offset + my_rank] = idx;
 }
 
-__global__ void cuda_MATBlinnPhong(Paths paths, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount) {
+__global__ void cuda_MATBlinnPhong(Paths paths, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx > materialQueueCount[BLINNPHONG-2])
+    if (idx > materialQueueCount[BLINNPHONG-TYPES_BEFORE_BLINNPHONG])
         return;
 
     size_t currPathIdx = MATBlinnPhongQueue[idx];
@@ -211,11 +229,26 @@ __global__ void cuda_MATBlinnPhong(Paths paths, uint32_t* materialQueueCount, ui
 
     //paths.color[MATBlinnPhongQueue[idx]] = make_float4(0.56f, 0.0f, 0.26f, 1.0f);
     float3 normal = paths.rayHitNormal[currPathIdx];
-    float3 outDir = make_float3(0.0, 0.0f, 0.0f);
+    float pdf = 0.0f;
+    float3 outDir = sampleBRDF<BLINNPHONG>(normal, localRandState, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx], pdf);
     float3 inDir = paths.rayDir[currPathIdx];
 
-    paths.color[MATBlinnPhongQueue[idx]] = make_float4(evaluateBRDF<BLINNPHONG>(normal, outDir, inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]), 1.0f);
+    float3 extbrdfRes = evaluateBRDF<BLINNPHONG>(normal, outDir, inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]);
 
+    paths.ExtBRDFColor[currPathIdx] = extbrdfRes;
+	paths.ExtBRDFColorPDF[currPathIdx] = pdf;
+    // add to extension queue
+
+
+    // TODO: light sampling
+    //uint32_t lightIdx = int(curand_uniform(&localRandState) * lightCount);
+    //float3 lightOutDir = lightCenters[lightIdx] - paths.rayHitPoint[idx];
+    //paths.lightRayDir[currPathIdx] = lightOutDir;
+    //paths.LightBRDFColor[currPathIdx] = evaluateBRDF<BLINNPHONG>(normal, lightOutDir, inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]);
+    ////paths.LightBRDFColorPDF[currPathIdx] = getBRDFPDF
+
+
+    paths.color[MATBlinnPhongQueue[idx]] = make_float4(paths.ExtBRDFColor[currPathIdx], 1);
     paths.randomNo[currPathIdx] = localRandState;
 }
 

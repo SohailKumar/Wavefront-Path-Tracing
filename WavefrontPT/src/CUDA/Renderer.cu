@@ -27,16 +27,16 @@ void Renderer::GenerateCameraRays(CameraData camData) {
     }
 }
 
-void Renderer::IntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount)
+void Renderer::IntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount)
 {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_IntersectionSpheres<<<gridSize, blockSize>>> (paths, maxPaths, sphereRadii, sphereCenters, sphereCount);
+    cuda_Intersection<<<gridSize, blockSize>>> (paths, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
-        throw std::exception("cuda_GenerateCameraRays() failed to launch error = %d\n", error);
+        throw std::exception("cuda_Intersection() failed to launch error = %d\n", error);
     }
 
 }
@@ -54,10 +54,10 @@ void Renderer::LogicKernel()
     }
 }
 
-void Renderer::RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount) {
+void Renderer::RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
     cudaError_t error = cudaSuccess;
 
-    cuda_MATBlinnPhong << <gridSize, blockSize >> > (paths, queues.materialQueueCount, queues.MATBlinnPhongQueue, albedoDiffuse, albedoSpecular, shininess, sphereCount);
+    cuda_MATBlinnPhong << <gridSize, blockSize >> > (paths, queues.materialQueueCount, queues.MATBlinnPhongQueue, albedoDiffuse, albedoSpecular, shininess, sphereCount, lightTriA, lightTriB, lightTriC, lightCount);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
