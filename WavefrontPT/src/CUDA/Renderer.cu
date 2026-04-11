@@ -27,12 +27,12 @@ void Renderer::GenerateCameraRays(CameraData camData) {
     }
 }
 
-void Renderer::IntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount)
+void Renderer::IntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount)
 {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_Intersection<<<gridSize, blockSize>>> (paths, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount);
+    cuda_Intersection<<<gridSize, blockSize>>> (paths, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount, lightTriA, lightTriB, lightTriC, lightCount);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {

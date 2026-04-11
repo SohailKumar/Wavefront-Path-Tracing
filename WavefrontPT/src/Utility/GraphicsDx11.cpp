@@ -56,12 +56,6 @@ struct ConstantBuffer
 Microsoft::WRL::ComPtr<ID3D11Buffer> g_pConstantBuffer;
 Microsoft::WRL::ComPtr<ID3D11SamplerState> g_pSamplerState;
 
-//extern "C"
-//{
-//	bool cuda_texture_2d(void* surface, size_t width, size_t height, size_t pitch, float t);
-//	bool cuda_SendRays(void* surface, size_t width, size_t height, size_t pitch);
-//}
-
 void GraphicsDx11::Init(HWND winHandle) {
 	//Fill Swap Chain Descriptor
 	DXGI_SWAP_CHAIN_DESC sd = {};
@@ -354,7 +348,7 @@ void GraphicsDx11::CUDARender()
 
 		renderer->GenerateCameraRays(App::GetCamera().camDetails);
 
-		renderer->IntersectionKernel(App::GetScene().sphereRadii, App::GetScene().sphereCenters, App::GetScene().sphereCount, App::GetScene().planeTriA, App::GetScene().planeTriB, App::GetScene().planeTriC, App::GetScene().planeTriCount);
+		renderer->IntersectionKernel(App::GetScene().sphereRadii, App::GetScene().sphereCenters, App::GetScene().sphereCount, App::GetScene().planeTriA, App::GetScene().planeTriB, App::GetScene().planeTriC, App::GetScene().planeTriCount, App::GetScene().lightTriA, App::GetScene().lightTriB, App::GetScene().lightTriC, App::GetScene().lightCount);
 		renderer->LogicKernel();
 		renderer->RunMaterialShaders(App::GetScene().albedoDiffuse, App::GetScene().albedoSpecular, App::GetScene().shininess, App::GetScene().sphereCount, App::GetScene().lightTriA, App::GetScene().lightTriB, App::GetScene().lightTriC, App::GetScene().lightCount);
 		

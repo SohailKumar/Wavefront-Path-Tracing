@@ -123,14 +123,14 @@ __global__ void cuda_GenerateCameraRays(Paths paths, CameraData camData, uint32_
     curand_init(RANDOM_SEED, idx, 0, &paths.randomNo[idx]);
 }
 
-__global__ void cuda_Intersection(Paths paths, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount) {
+__global__ void cuda_Intersection(Paths paths, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;
     
     bool intersect = 0;
 
-    //Check for intersections
+    //Check for intersections 
     float3 hitPoint = {};
     float3 normal = make_float3(1.0, 1.0, 0.0);
 
@@ -143,6 +143,20 @@ __global__ void cuda_Intersection(Paths paths, uint32_t maxPaths, float* sphereR
                 paths.rayHitMat[idx] = BLINNPHONG;
                 paths.rayHitPoint[idx] = hitPoint;
                 paths.rayHitNormal[idx] = normal;
+                break;
+            }
+        }
+    }
+
+    // check lights
+    if (!intersect) {
+        for (uint32_t i = 0; i < lightCount; ++i) {
+            if (planeTriIntersect(paths.rayOgn[idx], paths.rayDir[idx], lightTriA[i], lightTriB[i], lightTriC[i], hitPoint, normal)) {
+                intersect = 1;
+                paths.rayHitMatID[idx] = sphereCount + planeTriCount + i;
+                paths.rayHitMat[idx] = LIGHT;
+                paths.rayHitPoint[idx] = hitPoint; // unused
+                paths.rayHitNormal[idx] = normal; // unused
                 break;
             }
         }
@@ -165,7 +179,7 @@ __global__ void cuda_Intersection(Paths paths, uint32_t maxPaths, float* sphereR
 
     if(!intersect)
     {
-        paths.rayHitMat[idx] = NO_HIT;
+        paths.rayHitMat[idx] = EXIT_SCENE;
     }
 }
 
@@ -182,24 +196,41 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) 
     if (paths.rayCount[idx] <= 1) // allow 1 bounce
     {
         // kill
-        paths.color[idx] = make_float4(0.14f, 0.14f, 0.14f, 1.0f);
+        paths.color[idx] = make_float4(0.02f, 0.02f, 0.08f, 1.0f);
         paths.sampled[idx] = true;
         return;
     }
     
     // Ray lives!
 
-    int matId = paths.rayHitMat[idx];
-    if (matId < BLINNPHONG) { // matId = NO_HIT, EXIT_SCENE, LIGHT
+    int matTypeID = paths.rayHitMat[idx];
+
+    if (matTypeID == LIGHT) {
+        // hit light: set color and kill
+        paths.color[idx] = make_float4(1.0f, 1.0f, 1.0f, 1.0f);
+        paths.sampled[idx] = true;
+		return;
+    }
+
+    if (matTypeID == EXIT_SCENE) { // matTypeID = NO_HIT, EXIT_SCENE
+        paths.color[idx] = make_float4(0.02f, 0.02f, 0.08f, 1.0f);
+        paths.sampled[idx] = true;
         return;
     }
 
-    int matQueueIdx = matId - BLINNPHONG;
+
+    if (matTypeID == NO_HIT) { // matTypeID = NO_HIT, EXIT_SCENE
+        paths.color[idx] = make_float4(1.0f, 0.0f, 1.0f, 1.0f);
+        paths.sampled[idx] = true;
+        return;
+    }
+
+    int matQueueIdx = matTypeID - BLINNPHONG;
     //queues.materialQueue[matQueueIdx];
 
     // find all threads in the same warp with the same matID
     auto g = cg::coalesced_threads();
-    auto mat_group = cg::labeled_partition(g, matId);
+    auto mat_group = cg::labeled_partition(g, matTypeID);
 
     int num_matches = mat_group.size();
     int my_rank = mat_group.thread_rank();

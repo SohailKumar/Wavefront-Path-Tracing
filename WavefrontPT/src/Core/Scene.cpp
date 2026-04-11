@@ -86,22 +86,22 @@ void Scene::CreateScene()
 	shininess[5] = 1.0f;
 
 	// roof
-	planeTriA[4] = make_float3(-4, 3, 5);
-	planeTriB[4] = make_float3(-4, 3, -20);
-	planeTriC[4] = make_float3(4, 3, 5);
-	albedoDiffuse[6] = make_float3(0.56f, 0.0f, 0.0f);
-	albedoSpecular[6] = make_float3(1.0f, 1.0f, 1.0f);
-	shininess[6] = 1.0f;
+	//planeTriA[4] = make_float3(-4, 3, 5);
+	//planeTriB[4] = make_float3(-4, 3, -20);
+	//planeTriC[4] = make_float3(4, 3, 5);
+	//albedoDiffuse[6] = make_float3(0.56f, 0.0f, 0.0f);
+	//albedoSpecular[6] = make_float3(1.0f, 1.0f, 1.0f);
+	//shininess[6] = 1.0f;
 
-	planeTriA[5] = make_float3(4, 3, 5);
-	planeTriB[5] = make_float3(-4, 3, -20);
-	planeTriC[5] = make_float3(4, 3, -20);
-	albedoDiffuse[7] = make_float3(0.56f, 0.0f, 0.0f);
-	albedoSpecular[7] = make_float3(1.0f, 1.0f, 1.0f);
-	shininess[7] = 1.0f;
+	//planeTriA[5] = make_float3(4, 3, 5);
+	//planeTriB[5] = make_float3(-4, 3, -20);
+	//planeTriC[5] = make_float3(4, 3, -20);
+	//albedoDiffuse[7] = make_float3(0.56f, 0.0f, 0.0f);
+	//albedoSpecular[7] = make_float3(1.0f, 1.0f, 1.0f);
+	//shininess[7] = 1.0f;
 
 	// LIGHTS
-	lightCount = 1;
+	lightCount = 2;
 
 	err = cudaMallocManaged(reinterpret_cast<void**>(&lightTriA), lightCount * sizeof(float3));
 	if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
@@ -118,9 +118,15 @@ void Scene::CreateScene()
 	err = cudaMallocManaged(reinterpret_cast<void**>(&lightIntensity), lightCount * sizeof(float));
 	if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
-	lightTriA[0] = make_float3(7, 7, -2);
-	lightTriB[0] = make_float3(8, 7, -2);
-	lightTriC[0] = make_float3(7, 8, -2);
+	lightTriA[0] = make_float3(-4, 3, 5);
+	lightTriB[0] = make_float3(-4, 3, -20);
+	lightTriC[0] = make_float3(4, 3, 5);
 	lightColors[0] = make_float3(1.0f, 1.0f, 1.0f);
 	lightIntensity[0] = 100.0f;
+
+	lightTriA[1] = make_float3(4, 3, 5);
+	lightTriB[1] = make_float3(-4, 3, -20);
+	lightTriC[1] = make_float3(4, 3, -20);
+	lightColors[1] = make_float3(1.0f, 1.0f, 1.0f);
+	lightIntensity[1] = 100.0f;
 }
