@@ -11,7 +11,7 @@ void Scene::CreateScene()
 	cudaError_t err = cudaSuccess;
 
 	sphereCount = 2;
-	planeTriCount = 8;
+	planeTriCount = 4;
 
 	err = cudaMallocManaged(reinterpret_cast<void**>(&sphereRadii), sphereCount * sizeof(float));
 	if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }

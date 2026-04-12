@@ -195,7 +195,7 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
 }
 
 
-__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, float3* lightColors, float* lightIntensity) {
+__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, float3* lightColors, float* lightIntensity ) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;
@@ -205,13 +205,29 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
     paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx];
 
     // Ray Termination: x bounces, no hit, hit light
-    //if (paths.rayCount[idx] > 5) // allow 1 ray for each path
-    //{
-    //    // kill
-    //    paths.color[idx] = make_float4(PINK, 1.0f);
-    //    paths.sampled[idx] = true;
-    //    return;
-    //}
+	if (paths.rayCount[idx] > 3) // start doing russian roulette after 3 bounces
+    {
+		float maxVal = max(paths.throughput[idx].x, max(paths.throughput[idx].y, paths.throughput[idx].z));
+
+        // Throughput too low: kill ray
+        if (maxVal < 0.05f) {
+            paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f); // throughput killed
+            paths.sampled[idx] = true;
+			return;
+        }
+        curandState localRandState = paths.randomNo[idx];
+
+        // Russian Roulette: kill unlucky :(
+        if (curand_uniform(&localRandState) > maxVal) {
+            paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+            paths.sampled[idx] = true;
+            return;
+        }
+
+        // Increase throughput for survivors
+		paths.throughput[idx] = paths.throughput[idx] / maxVal;
+        paths.randomNo[idx] = localRandState;
+    }
     
     // Ray lives!
 
