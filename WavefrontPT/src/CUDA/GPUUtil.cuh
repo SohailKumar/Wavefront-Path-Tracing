@@ -20,7 +20,7 @@ __device__ float3 evaluateBRDF(float3 normal, float3 outDir, float3 inDir, float
         float cosOut = max(dot(normal, outDir), 0.0f);
 
         // If light is behind the surface or the camera is behind the surface
-        if (cosIn <= 0.0 || cosOut <= 0.0) return PINK;
+        if (cosIn <= 0.0 || cosOut <= 0.0) return PINK; // PINK
 
         float3 halfVec = normalize(outDir + inDir);
         float cosHalfN = max(dot(normal, halfVec), 0.0f);

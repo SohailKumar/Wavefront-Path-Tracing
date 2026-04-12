@@ -28,6 +28,8 @@ namespace GraphicsDx11 {
 		int                       height;
 	} Texture2D;
 
+	static int frameCount = 0;
+
 	void Init(HWND  winHandle);
 	void ContinueInit();
 	void Destroy();
@@ -38,6 +40,6 @@ namespace GraphicsDx11 {
 
 	void PrintAllAdapterNames();
 	void InitTexturesAndRegisterWithCUDA();
-	void CUDARender();
+	void CUDARender(int frameCount);
 	void DrawSceneTexture2D();
 };

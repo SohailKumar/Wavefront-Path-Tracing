@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <string>
 #include <optional>
+#include "GraphicsDx11.h"
 
 namespace Window
 {
@@ -35,5 +36,7 @@ namespace Window
 	);
 
 	void CreateConsoleWindow(int bufferLines, int bufferColumns, int windowLines, int windowColumns);
+
+	void Update(int frameCount);
 
 }

@@ -18,6 +18,25 @@ HWND Window::GetHandle() { return _winHandle; }
 bool Window::HasFocus() { return _hasFocus; }
 bool Window::IsMinimized() { return _isMinimized; }
 
+void Window::Update(int frameCount) {
+    {
+        GraphicsDx11::ClearBuffer(0.1, 0.0, 0.2);
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+        std::wcout << "\tClear Buffer: " << updateTimer.GetStringTime(true) << std::endl;
+#endif
+
+        GraphicsDx11::CUDARender(frameCount);
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+        std::wcout << "\tCUDA Render: " << updateTimer.GetStringTime(true) << std::endl;
+#endif
+
+        GraphicsDx11::FinishFrame();
+#if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
+        std::wcout << "\tFinih Frame: " << updateTimer.GetStringTime(true) << std::endl;
+#endif
+    }
+}
+
 LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
@@ -27,12 +46,18 @@ LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
     case WM_CLOSE:
         PostQuitMessage(69); // Posts quit message to Message Queue. Returning with code 69.
         break;
-        //case WM_LBUTTONDOWN:
-        //    const POINTS pt = MAKEPOINTS(lParam);
-        //    std::string windowMsg = "Point: ( " + std::to_string(pt.x) + ", " + std::to_string(pt.y) + " )";
+    case WM_LBUTTONDOWN:
+        //const POINTS pt = MAKEPOINTS(lParam);
+        //std::wstring windowMsg = L"Point: ( " + std::to_wstring(pt.x) + L", " + std::to_wstring(pt.y) + L" )";
+        //SetWindowText(hWnd, windowMsg.c_str());
 
-        //    SetWindowText(hWnd, windowMsg);
-        //    break;
+        for (int i = 0; i < 10; ++i) {
+            Update(++GraphicsDx11::frameCount);
+        }
+
+        SetWindowText(hWnd, std::to_wstring(GraphicsDx11::frameCount).c_str());
+
+        break;
     }
 
     return DefWindowProc(hWnd, msg, wParam, lParam);

@@ -8,6 +8,7 @@
 namespace cg = cooperative_groups;
 
 #define RANDOM_SEED 1
+#define EPSILON 0.001f
 
 __global__ void cuda_InitTraceRay(unsigned char* surface, int width, int height, size_t pitch, CameraData camData, float t)
 {
@@ -89,7 +90,7 @@ __global__ void cuda_kernel_texture_2d(unsigned char* surface, int width, int he
     pixel[3] = 1;
 }
 
-__global__ void cuda_GenerateCameraRays(Paths paths, Queues queues, CameraData camData, uint32_t maxPaths, uint32_t width, uint32_t height)
+__global__ void cuda_GenerateCameraRays(Paths paths, Queues queues, CameraData camData, uint32_t maxPaths, uint32_t width, uint32_t height, int frameCount)
 {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
@@ -123,7 +124,7 @@ __global__ void cuda_GenerateCameraRays(Paths paths, Queues queues, CameraData c
 
     //paths.randomSeed = 
     //curand_init(1, id, )
-    curand_init(RANDOM_SEED, idx, 0, &paths.randomNo[idx]);
+    curand_init(RANDOM_SEED + frameCount, idx, 0, &paths.randomNo[idx]);
 
     // Increase extension queue count
     int offset = atomicAdd(queues.extensionRayQueueCount, 1);
@@ -204,13 +205,13 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
     paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx];
 
     // Ray Termination: x bounces, no hit, hit light
-    if (paths.rayCount[idx] > 5) // allow 1 ray for each path
-    {
-        // kill
-        paths.color[idx] = make_float4(0.0f, 0.0f, 1.0f, 1.0f);
-        paths.sampled[idx] = true;
-        return;
-    }
+    //if (paths.rayCount[idx] > 5) // allow 1 ray for each path
+    //{
+    //    // kill
+    //    paths.color[idx] = make_float4(PINK, 1.0f);
+    //    paths.sampled[idx] = true;
+    //    return;
+    //}
     
     // Ray lives!
 
@@ -223,7 +224,7 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
 		return;
     }
     if (matTypeID == EXIT_SCENE) {
-        paths.color[idx] = make_float4(0.02f, 0.02f, 0.02f, 1.0f);
+        paths.color[idx] = make_float4(0.02f, 0.02f, 0.02f, 1.0f); // throughput killed
         paths.sampled[idx] = true;
         return;
     }
@@ -280,7 +281,7 @@ __global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materia
     int offset = atomicAdd(queues.extensionRayQueueCount, 1);
     // Add to extensionRayQueue
     queues.extensionRayQueue[offset] = currPathIdx;
-	paths.rayOgn[currPathIdx] = paths.rayHitPoint[currPathIdx];
+	paths.rayOgn[currPathIdx] = paths.rayHitPoint[currPathIdx] + normal * EPSILON;
 	paths.rayDir[currPathIdx] = outDir;
 
 
@@ -297,7 +298,7 @@ __global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materia
     paths.randomNo[currPathIdx] = localRandState;
 }
 
-__global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t maxPaths, uint32_t width, uint32_t height, unsigned char* surface, size_t pitch) 
+__global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t maxPaths, uint32_t width, uint32_t height, unsigned char* surface, float4* accumulationBuffer, size_t pitch, int frameCount)
 {
     //size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     int    x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -311,9 +312,30 @@ __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t max
 
     pixel = (float*)(surface + y * pitch) + 4 * x;
 
-    pixel[0] = paths.color[idx].x;
-    pixel[1] = paths.color[idx].y;
-    pixel[2] = paths.color[idx].z;
-    pixel[3] = paths.color[idx].w;
+	paths.color[idx].x = clamp(paths.color[idx].x, 0.0f, 1.0f);
+	paths.color[idx].y = clamp(paths.color[idx].y, 0.0f, 1.0f);
+	paths.color[idx].z = clamp(paths.color[idx].z, 0.0f, 1.0f);
+	paths.color[idx].w = clamp(paths.color[idx].w, 0.0f, 1.0f);
+
+    if (frameCount == 0) {
+        pixel[0] = paths.color[idx].x;
+        pixel[1] = paths.color[idx].y;
+        pixel[2] = paths.color[idx].z;
+        pixel[3] = paths.color[idx].w;
+		accumulationBuffer[idx].x = paths.color[idx].x;
+		accumulationBuffer[idx].y = paths.color[idx].y;
+		accumulationBuffer[idx].z = paths.color[idx].z;
+		accumulationBuffer[idx].w = paths.color[idx].w;
+    }
+    else {
+        accumulationBuffer[idx].x += paths.color[idx].x;
+        accumulationBuffer[idx].y += paths.color[idx].y;
+        accumulationBuffer[idx].z += paths.color[idx].z;
+        accumulationBuffer[idx].w += paths.color[idx].w;
+		pixel[0] = (accumulationBuffer[idx].x) / (frameCount+1);
+        pixel[1] = (accumulationBuffer[idx].y) / (frameCount+1);
+        pixel[2] = (accumulationBuffer[idx].z) / (frameCount+1);
+		pixel[3] = (accumulationBuffer[idx].w) / (frameCount+1);
+    }
 }
 

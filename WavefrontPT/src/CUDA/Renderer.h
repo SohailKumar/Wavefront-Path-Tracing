@@ -8,6 +8,7 @@ class Renderer {
 private:
 	Paths paths; // all paths
 	Queues queues;
+	float4* accumulationBuffer;
 
 public: 
 	dim3 imageBlockSize;  // threads per block for writing to image buffer
@@ -47,14 +48,13 @@ public:
 
 	void Initialize(Scene& scene);
 
-	void FirstFrame(Camera& cam, Scene& scene, void* surface, size_t pitch);
-	void IterateOneFrame();
+	void IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t pitch, int frameCount, int bounces);
 
-	void GenerateCameraRays(CameraData camData);
+	void GenerateCameraRays(CameraData camData, int frameCount);
 	void ExtensionRayIntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount);
 	void LogicKernel(float3* lightColors, float* lightIntensity);
 	void RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount);
-	void PostProcess(void* surface, size_t pitch);
+	void PostProcess(void* surface, size_t pitch, int frameCount, float4* accumulationBuffer);
 
 	void InitializeRays(void* surface, size_t pitch, CameraData camData, float t);
 	void TextureTest(void* surface, uint32_t width, uint32_t height, size_t pitch);

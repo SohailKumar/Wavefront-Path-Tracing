@@ -3,7 +3,6 @@
 #include <iomanip>
 #include "window.h"
 #include "Timer.h"
-#include "GraphicsDx11.h"
 #include "App.h"
 #include <iostream>
 
@@ -28,7 +27,7 @@ void CUDAChecks() {
     std::cout << "Supports coop launch: " << supportsCoopLaunch << std::endl << "DEV: " << dev << std::endl;
 }
 
-void Update() {
+void Update(int frameCount) {
     // timer.UpdateWindowTitleWithTimer();
     Timer updateTimer = Timer();
     GraphicsDx11::ClearBuffer(0.1, 0.0, 0.2);
@@ -36,7 +35,7 @@ void Update() {
     std::wcout << "\tClear Buffer: " << updateTimer.GetStringTime(true) << std::endl;
 #endif
 
-    GraphicsDx11::CUDARender();
+    GraphicsDx11::CUDARender(frameCount);
 #if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
     std::wcout << "\tCUDA Render: " << updateTimer.GetStringTime(true) << std::endl;
 #endif
@@ -94,8 +93,20 @@ int WINAPI wWinMain(
 #if defined(DEBUG) | defined(_DEBUG)
         std::wcout << "\n\n";
 #endif
+
         // Game Loop
-        Update();
+        Window::Update(GraphicsDx11::frameCount);
+        GraphicsDx11::frameCount += 1;
+		std::cout << "frame count" << GraphicsDx11::frameCount << std::endl;
+        //for (int i = 0; i < 5; i++) {
+        //    if (const auto exitCode = Window::ProcessMessages()) {
+        //        GraphicsDx11::Destroy();
+        //        return *exitCode;
+        //    }
+        //    Update(frameCount);
+        //    frameCount++;
+        //}
+
 
         while(true)
         {

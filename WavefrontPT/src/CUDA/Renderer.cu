@@ -9,33 +9,45 @@ void Renderer::Initialize(Scene &scene)
 
     // Allocate Memory for all camera rays and their properties(color, throughput, bounces, etc.)
     paths.reallocatePaths(currWidth, currHeight);
+    
+    size_t totalPixels = currWidth * currHeight;
+    cudaError_t err = cudaMallocManaged(&accumulationBuffer, totalPixels * sizeof(float4));
+    if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
     // Allocate memory for all objects for intersection kernel
     scene.CreateScene();
 
 }
 
-void Renderer::FirstFrame(Camera &cam, Scene &scene, void* surface, size_t pitch)
+void Renderer::IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t pitch, int frameCount, int bounces)
 {
-    GenerateCameraRays(cam.camDetails);
-
+    GenerateCameraRays(cam.camDetails, frameCount);
     ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
     LogicKernel(scene.lightColors, scene.lightIntensity);
-    RunMaterialShaders(scene.albedoDiffuse, scene.albedoSpecular, scene.shininess, scene.sphereCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
-    ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
-    LogicKernel(scene.lightColors, scene.lightIntensity);
-    PostProcess(surface, pitch);
+
+    for (int i = 0; i < bounces; i++) {
+        RunMaterialShaders(scene.albedoDiffuse, scene.albedoSpecular, scene.shininess, scene.sphereCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
+        ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
+        LogicKernel(scene.lightColors, scene.lightIntensity);
+	}
+    PostProcess(surface, pitch, frameCount, accumulationBuffer);
+
+    cudaError_t error = cudaSuccess;
+    error = cudaMemsetAsync(queues.extensionRayQueueCount, 0, sizeof(uint32_t));
+    if (error != cudaSuccess) {
+        throw std::exception("memsetAsync() failed to launch error = %d\n", error);
+    }
+    error = cudaMemsetAsync(queues.materialQueueCount, 0, AVAILABLE_MAT_TYPES * sizeof(uint32_t));
+    if (error != cudaSuccess) {
+        throw std::exception("memsetAsync() failed to launch error = %d\n", error);
+    }
 }
 
-void Renderer::IterateOneFrame()
-{
-}
-
-void Renderer::GenerateCameraRays(CameraData camData) {
+void Renderer::GenerateCameraRays(CameraData camData, int frameCount) {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_GenerateCameraRays<<<gridSize, blockSize>>>(paths, queues, camData, maxPaths, currWidth, currHeight);
+    cuda_GenerateCameraRays<<<gridSize, blockSize>>>(paths, queues, camData, maxPaths, currWidth, currHeight, frameCount);
     
   //  cudaDeviceSynchronize();
   //  std::cout << "ExtensionRay Count: " << *queues.extensionRayQueueCount << std::endl;
@@ -99,11 +111,11 @@ void Renderer::RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular,
     }
 }
 
-void Renderer::PostProcess(void*  surface, size_t pitch) {
+void Renderer::PostProcess(void*  surface, size_t pitch, int frameCount, float4* accumulationBuffer) {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_PostProcessPathsAndWriteToSurface <<<imageGridSize, imageBlockSize >>> (paths, maxPaths, currWidth, currHeight,(unsigned char*)surface, pitch);
+    cuda_PostProcessPathsAndWriteToSurface <<<imageGridSize, imageBlockSize >>> (paths, maxPaths, currWidth, currHeight,(unsigned char*)surface, accumulationBuffer, pitch, frameCount);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {

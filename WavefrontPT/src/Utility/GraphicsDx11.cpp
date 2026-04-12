@@ -314,7 +314,7 @@ void GraphicsDx11::DrawSceneTexture2D() {
 	Context->Draw(4, 0);
 }
 
-void GraphicsDx11::CUDARender() 
+void GraphicsDx11::CUDARender(int frameCount) 
 {
 	Timer timer = Timer();
 
@@ -344,7 +344,9 @@ void GraphicsDx11::CUDARender()
 
 		//////////////////////////////////////////
 
-		renderer->FirstFrame(App::GetCamera(), App::GetScene(), Texture2D.cudaLinearMemory, Texture2D.pitch);
+		int bounces = 1;
+		renderer->IterateOneFrame(App::GetCamera(), App::GetScene(), Texture2D.cudaLinearMemory, Texture2D.pitch, frameCount, bounces);
+
 
 		//App::GetRenderer().InitializeRays(Texture2D.cudaLinearMemory, Texture2D.pitch, App::GetCamera().camDetails, t);
 		//App::GetRenderer().TextureTest(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);
