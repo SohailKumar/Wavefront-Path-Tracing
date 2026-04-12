@@ -10,6 +10,7 @@
 #include "Timer.h"
 #include <iostream>
 
+
 //
 // Vertex and Pixel shaders here : VS() & PS()
 //
@@ -343,16 +344,7 @@ void GraphicsDx11::CUDARender()
 
 		//////////////////////////////////////////
 
-
-		renderer->Initialize(App::GetScene());
-
-		renderer->GenerateCameraRays(App::GetCamera().camDetails);
-
-		renderer->ExtensionRayIntersectionKernel(App::GetScene().sphereRadii, App::GetScene().sphereCenters, App::GetScene().sphereCount, App::GetScene().planeTriA, App::GetScene().planeTriB, App::GetScene().planeTriC, App::GetScene().planeTriCount, App::GetScene().lightTriA, App::GetScene().lightTriB, App::GetScene().lightTriC, App::GetScene().lightCount);
-		renderer->LogicKernel();
-		renderer->RunMaterialShaders(App::GetScene().albedoDiffuse, App::GetScene().albedoSpecular, App::GetScene().shininess, App::GetScene().sphereCount, App::GetScene().lightTriA, App::GetScene().lightTriB, App::GetScene().lightTriC, App::GetScene().lightCount);
-		
-		renderer->PostProcess(Texture2D.cudaLinearMemory, Texture2D.pitch);
+		renderer->FirstFrame(App::GetCamera(), App::GetScene(), Texture2D.cudaLinearMemory, Texture2D.pitch);
 
 		//App::GetRenderer().InitializeRays(Texture2D.cudaLinearMemory, Texture2D.pitch, App::GetCamera().camDetails, t);
 		//App::GetRenderer().TextureTest(Texture2D.cudaLinearMemory, Texture2D.width, Texture2D.height, Texture2D.pitch);

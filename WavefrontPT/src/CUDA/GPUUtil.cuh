@@ -14,15 +14,13 @@ __device__ float3 evaluateBRDF(float3 normal, float3 outDir, float3 inDir, float
 	
     if constexpr (matTypeID == BLINNPHONG)
     {
-        //return normal;
-        //return albedoDiffuse;
         inDir *= -1;
 
         float cosIn = max(dot(normal, inDir), 0.0f);
         float cosOut = max(dot(normal, outDir), 0.0f);
 
         // If light is behind the surface or the camera is behind the surface
-        if (cosIn <= 0.0 || cosOut <= 0.0) return float3(1.0f, 0.0f, 1.0f);
+        if (cosIn <= 0.0 || cosOut <= 0.0) return PINK;
 
         float3 halfVec = normalize(outDir + inDir);
         float cosHalfN = max(dot(normal, halfVec), 0.0f);
@@ -89,7 +87,7 @@ __device__ float3 sampleBRDF(float3 normal, curandState &randState, float3 albed
             u *= cosf(r1) * r2s;
             v *= sinf(r1) * r2s;
             w *= sqrtf(1 - r2);
-            rDir = u + v + w; // direction of new sample ray
+            rDir = normalize(u + v + w); // direction of new sample ray
         }
         //TODO SPECULAR 
         //else 

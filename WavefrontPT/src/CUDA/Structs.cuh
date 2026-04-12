@@ -7,6 +7,7 @@ struct Ray {
 	float3 dir;
 };
 
+#define PINK float3(1.0f, 0.0f, 1.0f)
 #define TYPES_BEFORE_BLINNPHONG 3
 
 enum MaterialTypeID {

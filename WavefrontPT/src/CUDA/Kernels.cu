@@ -114,9 +114,12 @@ __global__ void cuda_GenerateCameraRays(Paths paths, Queues queues, CameraData c
 
     // Initialize other path variables
     // MOVE TO ITS OWN KERNEL IF REGENERATING RAYS
-    paths.rayCount[idx] = -1; // first time this ray hits an object, it gets updated to 0 bounces
+    paths.rayCount[idx] = 0; // first time this ray hits an object, it gets updated to 1 bounces
     paths.sampled[idx] = false;
     paths.rayHitMat[idx] = NO_HIT;
+    paths.ExtBRDFColor[idx] = make_float3(1.0f, 1.0f, 1.0f);
+    paths.ExtBRDFColorPDF[idx] = 1.0f;
+    paths.throughput[idx] = make_float3(1.0f, 1.0f, 1.0f);
 
     //paths.randomSeed = 
     //curand_init(1, id, )
@@ -160,7 +163,7 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
         for (uint32_t i = 0; i < lightCount; ++i) {
             if (planeTriIntersect(paths.rayOgn[idx], paths.rayDir[idx], lightTriA[i], lightTriB[i], lightTriC[i], hitPoint, normal)) {
                 intersect = 1;
-                paths.rayHitMatID[idx] = sphereCount + planeTriCount + i;
+                paths.rayHitMatID[idx] = i; // light index for light color
                 paths.rayHitMat[idx] = LIGHT;
                 paths.rayHitPoint[idx] = hitPoint; // unused
                 paths.rayHitNormal[idx] = normal; // unused
@@ -191,19 +194,20 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
 }
 
 
-__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) {
+__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, float3* lightColors, float* lightIntensity) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;
 
-    // update throughput
-    paths.rayCount += 1;
+    // update 
+    paths.rayCount[idx] += 1;
+    paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx];
 
     // Ray Termination: x bounces, no hit, hit light
-    if (paths.rayCount[idx] <= 1) // allow 1 bounce
+    if (paths.rayCount[idx] > 5) // allow 1 ray for each path
     {
         // kill
-        paths.color[idx] = make_float4(0.02f, 0.02f, 0.08f, 1.0f);
+        paths.color[idx] = make_float4(0.0f, 0.0f, 1.0f, 1.0f);
         paths.sampled[idx] = true;
         return;
     }
@@ -214,20 +218,17 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) 
 
     if (matTypeID == LIGHT) {
         // hit light: set color and kill
-        paths.color[idx] = make_float4(1.0f, 1.0f, 1.0f, 1.0f);
+        paths.color[idx] = make_float4(paths.throughput[idx] * lightColors[paths.rayHitMatID[idx]] * lightIntensity[paths.rayHitMatID[idx]]);
         paths.sampled[idx] = true;
 		return;
     }
-
-    if (matTypeID == EXIT_SCENE) { // matTypeID = NO_HIT, EXIT_SCENE
-        paths.color[idx] = make_float4(0.02f, 0.02f, 0.08f, 1.0f);
+    if (matTypeID == EXIT_SCENE) {
+        paths.color[idx] = make_float4(0.02f, 0.02f, 0.02f, 1.0f);
         paths.sampled[idx] = true;
         return;
     }
-
-
-    if (matTypeID == NO_HIT) { // matTypeID = NO_HIT, EXIT_SCENE
-        paths.color[idx] = make_float4(1.0f, 0.0f, 1.0f, 1.0f);
+    if (matTypeID == NO_HIT) {
+        paths.color[idx] = make_float4(PINK, 1.0f);
         paths.sampled[idx] = true;
         return;
     }
@@ -255,7 +256,7 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues) 
     queues.materialQueue[matQueueIdx][global_offset + my_rank] = idx;
 }
 
-__global__ void cuda_MATBlinnPhong(Paths paths, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
+__global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > materialQueueCount[BLINNPHONG-TYPES_BEFORE_BLINNPHONG])
         return;
@@ -275,7 +276,12 @@ __global__ void cuda_MATBlinnPhong(Paths paths, uint32_t* materialQueueCount, ui
 
     paths.ExtBRDFColor[currPathIdx] = extbrdfRes;
 	paths.ExtBRDFColorPDF[currPathIdx] = pdf;
-    // add to extension queue
+    // Increase extension queue count
+    int offset = atomicAdd(queues.extensionRayQueueCount, 1);
+    // Add to extensionRayQueue
+    queues.extensionRayQueue[offset] = currPathIdx;
+	paths.rayOgn[currPathIdx] = paths.rayHitPoint[currPathIdx];
+	paths.rayDir[currPathIdx] = outDir;
 
 
     // TODO: light sampling
@@ -286,7 +292,8 @@ __global__ void cuda_MATBlinnPhong(Paths paths, uint32_t* materialQueueCount, ui
     ////paths.LightBRDFColorPDF[currPathIdx] = getBRDFPDF
 
 
-    paths.color[MATBlinnPhongQueue[idx]] = make_float4(paths.ExtBRDFColor[currPathIdx], 1);
+    //paths.color[currPathIdx] = make_float4(paths.ExtBRDFColor[currPathIdx], 1);
+
     paths.randomNo[currPathIdx] = localRandState;
 }
 

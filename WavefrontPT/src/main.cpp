@@ -84,9 +84,11 @@ int WINAPI wWinMain(
         //Init Scene and Renderer
         Camera cam = Camera(float3(0, 0.5, 10), float3(0, 0.5, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
 		Scene scene = Scene(cam);
-		Renderer renderer = Renderer(Window::GetWidth(), Window::GetHeight());
+		Renderer rendererBegin = Renderer(Window::GetWidth(), Window::GetHeight());
 		
-        App::CreateApp(renderer, scene);
+        App::CreateApp(rendererBegin, scene);
+        Renderer* renderer = &App::GetRenderer();
+        renderer->Initialize(App::GetScene());
 
         fpsTimer = Timer(); 
 #if defined(DEBUG) | defined(_DEBUG)

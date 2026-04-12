@@ -15,6 +15,22 @@ void Renderer::Initialize(Scene &scene)
 
 }
 
+void Renderer::FirstFrame(Camera &cam, Scene &scene, void* surface, size_t pitch)
+{
+    GenerateCameraRays(cam.camDetails);
+
+    ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
+    LogicKernel(scene.lightColors, scene.lightIntensity);
+    RunMaterialShaders(scene.albedoDiffuse, scene.albedoSpecular, scene.shininess, scene.sphereCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
+    ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
+    LogicKernel(scene.lightColors, scene.lightIntensity);
+    PostProcess(surface, pitch);
+}
+
+void Renderer::IterateOneFrame()
+{
+}
+
 void Renderer::GenerateCameraRays(CameraData camData) {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
@@ -39,24 +55,25 @@ void Renderer::ExtensionRayIntersectionKernel(float* sphereRadii, float3* sphere
     cudaError_t error = cudaSuccess;
 
     cuda_ExtensionRayIntersection<<<gridSize, blockSize>>> (paths, queues, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount, lightTriA, lightTriB, lightTriC, lightCount);
-    error = cudaMemsetAsync(queues.extensionRayQueueCount, 0, sizeof(uint32_t));
-    if (error != cudaSuccess) {
-        throw std::exception("memsetAsync() failed to launch error = %d\n", error);
-    }
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
         throw std::exception("cuda_Intersection() failed to launch error = %d\n", error);
     }
 
+	// reset extension ray queue count for next set
+    error = cudaMemsetAsync(queues.extensionRayQueueCount, 0, sizeof(uint32_t));
+    if (error != cudaSuccess) {
+        throw std::exception("memsetAsync() failed to launch error = %d\n", error);
+    }
 }
 
-void Renderer::LogicKernel()
+void Renderer::LogicKernel(float3* lightColors, float* lightIntensity)
 {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_LogicKernel <<<gridSize, blockSize >>> (paths, maxPaths, queues);
+    cuda_LogicKernel <<<gridSize, blockSize >>> (paths, maxPaths, queues, lightColors, lightIntensity);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
@@ -68,14 +85,14 @@ void Renderer::RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular,
     cudaError_t error = cudaSuccess;
 
 	//TODO change gridSize and blockSize based on material queue count for better occupancy
-    cuda_MATBlinnPhong << <gridSize, blockSize >> > (paths, queues.materialQueueCount, queues.MATBlinnPhongQueue, albedoDiffuse, albedoSpecular, shininess, sphereCount, lightTriA, lightTriB, lightTriC, lightCount);
+    cuda_MATBlinnPhong << <gridSize, blockSize >> > (paths, queues, queues.materialQueueCount, queues.MATBlinnPhongQueue, albedoDiffuse, albedoSpecular, shininess, sphereCount, lightTriA, lightTriB, lightTriC, lightCount);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {
-        throw std::exception("cuda_GenerateCameraRays() failed to launch error = %d\n", error);
+        throw std::exception("cuda_MATBlinnPhong() failed to launch error = %d\n", error);
     }
 
-    // reset material queue count for next frame
+    // reset material queue count for next set
     error = cudaMemsetAsync(queues.materialQueueCount, 0, AVAILABLE_MAT_TYPES * sizeof(uint32_t));
     if (error != cudaSuccess) {
         throw std::exception("memsetAsync() failed to launch error = %d\n", error);
