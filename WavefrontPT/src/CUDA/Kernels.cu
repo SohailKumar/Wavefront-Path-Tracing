@@ -7,7 +7,7 @@
 #include <cooperative_groups.h>
 namespace cg = cooperative_groups;
 
-#define RANDOM_SEED 1
+#define RANDOM_SEED 10
 #define EPSILON 0.001f
 
 __global__ void cuda_InitTraceRay(unsigned char* surface, int width, int height, size_t pitch, CameraData camData, float t)
@@ -194,6 +194,53 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
     }
 }
 
+__global__ void cuda_ShadowRayIntersection(Paths paths, Queues queues, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
+    size_t threadidx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (threadidx >= *queues.extensionRayQueueCount)
+        return;
+
+    size_t idx = queues.extensionRayQueue[threadidx];
+
+    bool intersect = 0;
+
+    //Check for intersections 
+    float3 hitPoint = {};
+    float3 normal = make_float3(1.0, 1.0, 0.0);
+
+    // check spheres
+    if (!intersect) {
+        for (uint32_t i = 0; i < sphereCount; ++i) {
+            if (sphereIntersect(paths.rayOgn[idx], paths.lightRayDir[idx], sphereCenters[i], sphereRadii[i], hitPoint, normal)) {
+                intersect = 1;
+				paths.LightBRDFColor[idx] = make_float3(0.0f, 0.0f, 0.0f); // in shadow
+                return;
+            }
+        }
+    }
+
+    // check plane triangles
+    if (!intersect) {
+        for (uint32_t i = 0; i < planeTriCount; ++i) {
+            if (planeTriIntersect(paths.rayOgn[idx], paths.lightRayDir[idx], planeTriA[i], planeTriB[i], planeTriC[i], hitPoint, normal)) {
+                intersect = 1;
+				paths.LightBRDFColor[idx] = make_float3(0.0f, 0.0f, 0.0f); // in shadow
+                return;
+            }
+        }
+    }
+
+    //// check lights
+    //if (!intersect) {
+    //    for (uint32_t i = 0; i < lightCount; ++i) {
+    //        if (planeTriIntersect(paths.rayOgn[idx], paths.rayDir[idx], lightTriA[i], lightTriB[i], lightTriC[i], hitPoint, normal)) {
+    //            intersect = 1;
+
+    //            return;
+    //        }
+    //    }
+    //}
+}
+
 
 __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, float3* lightColors, float* lightIntensity ) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -202,26 +249,23 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
 
     // update 
     paths.rayCount[idx] += 1;
-    paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx];
+    //paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx];
+    paths.throughput[idx] = paths.LightBRDFColor[idx] / paths.LightBRDFColorPDF[idx];
+    //float totalPDF
+    //float wieghtExt = 
+    //paths.throughput[idx] = 
 
     // Ray Termination: x bounces, no hit, hit light
 	if (paths.rayCount[idx] > 3) // start doing russian roulette after 3 bounces
     {
 		float maxVal = max(paths.throughput[idx].x, max(paths.throughput[idx].y, paths.throughput[idx].z));
 
-        // Throughput too low: kill ray
-        if (maxVal < 0.05f) {
+        curandState localRandState = paths.randomNo[idx];
+        // Throughput too low: kill ray  OR Russian Roulette : kill unlucky
+        if( (maxVal < 0.05f) || (curand_uniform(&localRandState) > maxVal) ){
             paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f); // throughput killed
             paths.sampled[idx] = true;
 			return;
-        }
-        curandState localRandState = paths.randomNo[idx];
-
-        // Russian Roulette: kill unlucky :(
-        if (curand_uniform(&localRandState) > maxVal) {
-            paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
-            paths.sampled[idx] = true;
-            return;
         }
 
         // Increase throughput for survivors
@@ -301,15 +345,18 @@ __global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materia
 	paths.rayDir[currPathIdx] = outDir;
 
 
-    // TODO: light sampling
-    //uint32_t lightIdx = int(curand_uniform(&localRandState) * lightCount);
-    //float3 lightOutDir = lightCenters[lightIdx] - paths.rayHitPoint[idx];
-    //paths.lightRayDir[currPathIdx] = lightOutDir;
-    //paths.LightBRDFColor[currPathIdx] = evaluateBRDF<BLINNPHONG>(normal, lightOutDir, inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]);
-    ////paths.LightBRDFColorPDF[currPathIdx] = getBRDFPDF
+    uint32_t lightIdx = int(curand_uniform(&localRandState) * lightCount);
+	float3 randomPointOnLight = getRandomPointOnTri(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx], localRandState);
+    paths.LightBRDFColor[currPathIdx] = evaluateBRDF<BLINNPHONG>(normal, paths.lightRayDir[currPathIdx], inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]);
+	paths.LightBRDFColorPDF[currPathIdx] = getDiffusePDF(normal, paths.lightRayDir[currPathIdx]);
+	paths.lightSelectPDF[currPathIdx] = 1.0f / lightCount * getProbabilityOfPointOnTriangle(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx]);
+    // Add to shadowRay Queue
+    offset = atomicAdd(queues.shadowRayQueueCount, 1);
+    queues.shadowRayQueue[offset] = currPathIdx;
+    paths.lightRayDir[currPathIdx] = randomPointOnLight - paths.rayHitPoint[currPathIdx];
 
 
-    //paths.color[currPathIdx] = make_float4(paths.ExtBRDFColor[currPathIdx], 1);
+    paths.color[currPathIdx] = make_float4(normal, 1);
 
     paths.randomNo[currPathIdx] = localRandState;
 }

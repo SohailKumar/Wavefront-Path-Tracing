@@ -23,12 +23,14 @@ void Renderer::IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t 
 {
     GenerateCameraRays(cam.camDetails, frameCount);
     ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
+    //ShadowRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
     LogicKernel(scene.lightColors, scene.lightIntensity);
 
     for (int i = 0; i < bounces; i++) {
         RunMaterialShaders(scene.albedoDiffuse, scene.albedoSpecular, scene.shininess, scene.sphereCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
-        ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
-        LogicKernel(scene.lightColors, scene.lightIntensity);
+        //ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
+        //ShadowRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
+        //LogicKernel(scene.lightColors, scene.lightIntensity);
 	}
     PostProcess(surface, pitch, frameCount, accumulationBuffer);
 
@@ -75,6 +77,25 @@ void Renderer::ExtensionRayIntersectionKernel(float* sphereRadii, float3* sphere
 
 	// reset extension ray queue count for next set
     error = cudaMemsetAsync(queues.extensionRayQueueCount, 0, sizeof(uint32_t));
+    if (error != cudaSuccess) {
+        throw std::exception("memsetAsync() failed to launch error = %d\n", error);
+    }
+}
+
+void Renderer::ShadowRayIntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount)
+{
+    uint32_t maxPaths = currWidth * currHeight;
+    cudaError_t error = cudaSuccess;
+
+    cuda_ShadowRayIntersection << <gridSize, blockSize >> > (paths, queues, maxPaths, sphereRadii, sphereCenters, sphereCount, planeTriA, planeTriB, planeTriC, planeTriCount, lightTriA, lightTriB, lightTriC, lightCount);
+
+    error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        throw std::exception("cuda_Intersection() failed to launch error = %d\n", error);
+    }
+
+    // reset extension ray queue count for next set
+    error = cudaMemsetAsync(queues.shadowRayQueueCount, 0, sizeof(uint32_t));
     if (error != cudaSuccess) {
         throw std::exception("memsetAsync() failed to launch error = %d\n", error);
     }

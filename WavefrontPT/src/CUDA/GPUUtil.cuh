@@ -56,6 +56,22 @@ __device__ __inline__ float getSpecularPDF(float3 normal, float3 newRayDir)
     //return costh / std::numbers::pi;
 }
 
+__device__ __inline__ float3 getRandomPointOnTri(float3 v0, float3 v1, float3 v2, curandState &randState) 
+{
+    float r1 = sqrtf(curand_uniform(&randState));
+    float r2 = curand_uniform(&randState);
+    float u = 1 - r1;
+    float v = r1 * (1 - r2);
+    float w = r1 * r2;
+    return u * v0 + v * v1 + w * v2;
+}
+__device__ __inline__ float getProbabilityOfPointOnTriangle(float3 v0, float3 v1, float3 v2)
+{
+    float area =  0.5 * abs(v0.x * (v1.y - v2.y) + v1.x * (v2.y - v0.y) + v2.x * (v0.y - v1.y));
+    return (1 / area);
+}
+
+
 // Pick a new direction based on BRDF 
 template<MaterialTypeID matTypeID>
 __device__ float3 sampleBRDF(float3 normal, curandState &randState, float3 albedoDiffuse, float3 albedoSpecular, float shininess, float &rPDF)
