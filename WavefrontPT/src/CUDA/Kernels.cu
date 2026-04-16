@@ -253,24 +253,26 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
 
 
 
-    paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx] * paths.ExtCosTheta[idx];
+    paths.throughput[idx] *= paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx] * paths.ExtCosTheta[idx];
     //paths.throughput[idx] = paths.LightBRDFColor[idx] / paths.LightBRDFColorPDF[idx];
 
     // Ray Termination: x bounces, no hit, hit light
 	//if (paths.rayCount[idx] > 3) // start doing russian roulette after 3 bounces
  //   {
 	//	float maxVal = max(paths.throughput[idx].x, max(paths.throughput[idx].y, paths.throughput[idx].z));
+ //       float p = min(1.0f, maxVal);
 
  //       curandState localRandState = paths.randomNo[idx];
  //       // Throughput too low: kill ray  OR Russian Roulette : kill unlucky
- //       if( (maxVal < 0.05f) || (curand_uniform(&localRandState) > maxVal) ){
+ //       if( (maxVal < 0.05f) || (curand_uniform(&localRandState) > p) ){
  //           paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f); // throughput killed
  //           paths.sampled[idx] = true;
+	//		paths.randomNo[idx] = localRandState;
 	//		return;
  //       }
 
  //       // Increase throughput for survivors
-	//	paths.throughput[idx] = paths.throughput[idx] / maxVal;
+	//	paths.throughput[idx] = paths.throughput[idx] / p;
  //       paths.randomNo[idx] = localRandState;
  //   }
     
