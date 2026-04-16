@@ -344,7 +344,7 @@ void GraphicsDx11::CUDARender(int frameCount)
 
 		//////////////////////////////////////////
 
-		int bounces = 1;
+		int bounces = 5;
 		renderer->IterateOneFrame(App::GetCamera(), App::GetScene(), Texture2D.cudaLinearMemory, Texture2D.pitch, frameCount, bounces);
 
 

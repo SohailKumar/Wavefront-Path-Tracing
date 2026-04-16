@@ -249,8 +249,8 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
 
     // update 
     paths.rayCount[idx] += 1;
-    //paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx];
-    paths.throughput[idx] = paths.LightBRDFColor[idx] / paths.LightBRDFColorPDF[idx];
+    paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx];
+    //paths.throughput[idx] = paths.LightBRDFColor[idx] / paths.LightBRDFColorPDF[idx];
     //float totalPDF
     //float wieghtExt = 
     //paths.throughput[idx] = 
@@ -347,16 +347,16 @@ __global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materia
 
     uint32_t lightIdx = int(curand_uniform(&localRandState) * lightCount);
 	float3 randomPointOnLight = getRandomPointOnTri(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx], localRandState);
+    paths.lightRayDir[currPathIdx] = randomPointOnLight - paths.rayOgn[currPathIdx];
     paths.LightBRDFColor[currPathIdx] = evaluateBRDF<BLINNPHONG>(normal, paths.lightRayDir[currPathIdx], inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]);
 	paths.LightBRDFColorPDF[currPathIdx] = getDiffusePDF(normal, paths.lightRayDir[currPathIdx]);
 	paths.lightSelectPDF[currPathIdx] = 1.0f / lightCount * getProbabilityOfPointOnTriangle(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx]);
     // Add to shadowRay Queue
     offset = atomicAdd(queues.shadowRayQueueCount, 1);
     queues.shadowRayQueue[offset] = currPathIdx;
-    paths.lightRayDir[currPathIdx] = randomPointOnLight - paths.rayHitPoint[currPathIdx];
 
 
-    paths.color[currPathIdx] = make_float4(normal, 1);
+    //paths.color[currPathIdx] = make_float4(paths.LightBRDFColor[currPathIdx], 1);
 
     paths.randomNo[currPathIdx] = localRandState;
 }
@@ -375,10 +375,14 @@ __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t max
 
     pixel = (float*)(surface + y * pitch) + 4 * x;
 
-	paths.color[idx].x = clamp(paths.color[idx].x, 0.0f, 1.0f);
-	paths.color[idx].y = clamp(paths.color[idx].y, 0.0f, 1.0f);
-	paths.color[idx].z = clamp(paths.color[idx].z, 0.0f, 1.0f);
-	paths.color[idx].w = clamp(paths.color[idx].w, 0.0f, 1.0f);
+    paths.color[idx].x = paths.color[idx].x / (1 + paths.color[idx].x);
+    paths.color[idx].y = paths.color[idx].y / (1 + paths.color[idx].y);
+    paths.color[idx].z = paths.color[idx].z / (1 + paths.color[idx].z);
+    paths.color[idx].w = paths.color[idx].w / (1 + paths.color[idx].w);
+	//paths.color[idx].x = clamp(paths.color[idx].x, 0.0f, 1.0f);
+	//paths.color[idx].y = clamp(paths.color[idx].y, 0.0f, 1.0f);
+	//paths.color[idx].z = clamp(paths.color[idx].z, 0.0f, 1.0f);
+	//paths.color[idx].w = clamp(paths.color[idx].w, 0.0f, 1.0f);
 
     if (frameCount == 0) {
         pixel[0] = paths.color[idx].x;

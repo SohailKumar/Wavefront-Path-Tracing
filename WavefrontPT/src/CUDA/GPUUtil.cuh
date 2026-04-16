@@ -26,7 +26,8 @@ __device__ float3 evaluateBRDF(float3 normal, float3 outDir, float3 inDir, float
         float cosHalfN = max(dot(normal, halfVec), 0.0f);
 
         // Diffuse (Lambertian) component
-        float3 diffuse = albedoDiffuse / std::numbers::pi;
+        //float3 diffuse = albedoDiffuse / std::numbers::pi;
+        float3 diffuse = albedoDiffuse;
 
         // Specular (Blinn-Phong) component with energy conservation
         float normalization = (shininess + 8.0) / (8.0 * std::numbers::pi);
