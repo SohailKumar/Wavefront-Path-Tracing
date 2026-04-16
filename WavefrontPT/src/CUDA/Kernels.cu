@@ -120,6 +120,7 @@ __global__ void cuda_GenerateCameraRays(Paths paths, Queues queues, CameraData c
     paths.rayHitMat[idx] = NO_HIT;
     paths.ExtBRDFColor[idx] = make_float3(1.0f, 1.0f, 1.0f);
     paths.ExtBRDFColorPDF[idx] = 1.0f;
+    paths.ExtCosTheta[idx] = 1.0f;
     paths.throughput[idx] = make_float3(1.0f, 1.0f, 1.0f);
 
     //paths.randomSeed = 
@@ -249,29 +250,27 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
 
     // update 
     paths.rayCount[idx] += 1;
-    paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx];
+
+    paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx] * paths.ExtCosTheta[idx];
     //paths.throughput[idx] = paths.LightBRDFColor[idx] / paths.LightBRDFColorPDF[idx];
-    //float totalPDF
-    //float wieghtExt = 
-    //paths.throughput[idx] = 
 
     // Ray Termination: x bounces, no hit, hit light
-	if (paths.rayCount[idx] > 3) // start doing russian roulette after 3 bounces
-    {
-		float maxVal = max(paths.throughput[idx].x, max(paths.throughput[idx].y, paths.throughput[idx].z));
+	//if (paths.rayCount[idx] > 3) // start doing russian roulette after 3 bounces
+ //   {
+	//	float maxVal = max(paths.throughput[idx].x, max(paths.throughput[idx].y, paths.throughput[idx].z));
 
-        curandState localRandState = paths.randomNo[idx];
-        // Throughput too low: kill ray  OR Russian Roulette : kill unlucky
-        if( (maxVal < 0.05f) || (curand_uniform(&localRandState) > maxVal) ){
-            paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f); // throughput killed
-            paths.sampled[idx] = true;
-			return;
-        }
+ //       curandState localRandState = paths.randomNo[idx];
+ //       // Throughput too low: kill ray  OR Russian Roulette : kill unlucky
+ //       if( (maxVal < 0.05f) || (curand_uniform(&localRandState) > maxVal) ){
+ //           paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f); // throughput killed
+ //           paths.sampled[idx] = true;
+	//		return;
+ //       }
 
-        // Increase throughput for survivors
-		paths.throughput[idx] = paths.throughput[idx] / maxVal;
-        paths.randomNo[idx] = localRandState;
-    }
+ //       // Increase throughput for survivors
+	//	paths.throughput[idx] = paths.throughput[idx] / maxVal;
+ //       paths.randomNo[idx] = localRandState;
+ //   }
     
     // Ray lives!
 
@@ -337,6 +336,7 @@ __global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materia
 
     paths.ExtBRDFColor[currPathIdx] = extbrdfRes;
 	paths.ExtBRDFColorPDF[currPathIdx] = pdf;
+	paths.ExtCosTheta[currPathIdx] = max(0.0f, dot(normal, outDir));
     // Increase extension queue count
     int offset = atomicAdd(queues.extensionRayQueueCount, 1);
     // Add to extensionRayQueue
@@ -350,7 +350,8 @@ __global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materia
     paths.lightRayDir[currPathIdx] = randomPointOnLight - paths.rayOgn[currPathIdx];
     paths.LightBRDFColor[currPathIdx] = evaluateBRDF<BLINNPHONG>(normal, paths.lightRayDir[currPathIdx], inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]);
 	paths.LightBRDFColorPDF[currPathIdx] = getDiffusePDF(normal, paths.lightRayDir[currPathIdx]);
-	paths.lightSelectPDF[currPathIdx] = 1.0f / lightCount * getProbabilityOfPointOnTriangle(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx]);
+	paths.LightSelectPDF[currPathIdx] = 1.0f / lightCount * getProbabilityOfPointOnTriangle(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx]);
+	paths.LightCosTheta[currPathIdx] = max(0.0f, dot(paths.lightRayDir[currPathIdx], normal));
     // Add to shadowRay Queue
     offset = atomicAdd(queues.shadowRayQueueCount, 1);
     queues.shadowRayQueue[offset] = currPathIdx;
