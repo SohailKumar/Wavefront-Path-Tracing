@@ -23,11 +23,10 @@ void Renderer::IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t 
 {
     GenerateCameraRays(cam.camDetails, frameCount);
     ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
-    //ShadowRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
     LogicKernel(scene.lightColors, scene.lightIntensity);
 
     for (int i = 0; i < bounces; i++) {
-        RunMaterialShaders(scene.albedoDiffuse, scene.albedoSpecular, scene.shininess, scene.sphereCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
+        RunMaterialShaders(scene.albedoDiffuse, scene.albedoSpecular, scene.shininess, scene.sphereCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount, scene.lightColors, scene.lightIntensity);
         ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
         ShadowRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
         LogicKernel(scene.lightColors, scene.lightIntensity);
@@ -114,11 +113,11 @@ void Renderer::LogicKernel(float3* lightColors, float* lightIntensity)
     }
 }
 
-void Renderer::RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
+void Renderer::RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount, float3* lightColors, float* lightIntensity) {
     cudaError_t error = cudaSuccess;
 
 	//TODO change gridSize and blockSize based on material queue count for better occupancy
-    cuda_MATBlinnPhong << <gridSize, blockSize >> > (paths, queues, queues.materialQueueCount, queues.MATBlinnPhongQueue, albedoDiffuse, albedoSpecular, shininess, sphereCount, lightTriA, lightTriB, lightTriC, lightCount);
+    cuda_MATBlinnPhong << <gridSize, blockSize >> > (paths, queues, queues.materialQueueCount, queues.MATBlinnPhongQueue, albedoDiffuse, albedoSpecular, shininess, sphereCount, lightTriA, lightTriB, lightTriC, lightCount, lightColors, lightIntensity);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {

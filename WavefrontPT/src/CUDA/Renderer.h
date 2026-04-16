@@ -54,7 +54,7 @@ public:
 	void ExtensionRayIntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount);
 	void ShadowRayIntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount);
 	void LogicKernel(float3* lightColors, float* lightIntensity);
-	void RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount);
+	void RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount, float3* lightColors, float* lightIntensity);
 	void PostProcess(void* surface, size_t pitch, int frameCount, float4* accumulationBuffer);
 
 	void InitializeRays(void* surface, size_t pitch, CameraData camData, float t);

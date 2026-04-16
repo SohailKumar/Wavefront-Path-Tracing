@@ -70,6 +70,15 @@ __device__ __inline__ float getProbabilityOfPointOnTriangle(float3 v0, float3 v1
     float area =  0.5 * abs(v0.x * (v1.y - v2.y) + v1.x * (v2.y - v0.y) + v2.x * (v0.y - v1.y));
     return (1 / area);
 }
+// Geometric factor for direct lighting: Converts area PDF to solid angle PDF
+__device__ __inline__ float getGeometricFactor(float3 v0, float3 v1, float3 v2, float3 randomPointOnLight) 
+{
+    float3 rNormal = normalize(cross(v1 - v0, v2 - v0));
+    float3 lightDir = normalize(randomPointOnLight - v0); // light direction from surface to light
+    float cosThetaPrime = max(0.0f, dot(rNormal, lightDir));
+    float distanceSquared = dot(randomPointOnLight - v0, randomPointOnLight - v0);
+	return distanceSquared / cosThetaPrime;
+}
 
 
 // Pick a new direction based on BRDF 

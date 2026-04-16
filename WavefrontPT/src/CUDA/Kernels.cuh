@@ -15,6 +15,6 @@ __global__ void cuda_ShadowRayIntersection(Paths paths, Queues queues, uint32_t 
 
 __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, float3* lightColors, float* lightIntensity);
 
-__global__ void cuda_MATBlinnPhong(Paths paths, Queues, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount);
+__global__ void cuda_MATBlinnPhong(Paths paths, Queues, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount, float3* lightColors, float* lightIntensity);
 
 __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t maxPaths, uint32_t width, uint32_t height, unsigned char* surface, float4* accumulationBuffer, size_t pitch, int frameCount);

@@ -37,10 +37,12 @@ struct Paths {
 	float3* ExtBRDFColor;
 	float* ExtBRDFColorPDF;
 	float* ExtCosTheta;
+
 	float3* LightBRDFColor;
 	float* LightBRDFColorPDF;
 	float* LightSelectPDF;
 	float* LightCosTheta;
+	float3* LightEmittance;
 
 	curandState* randomNo;
 
@@ -72,6 +74,7 @@ struct Paths {
 		LightSelectPDF = {};
 		LightCosTheta = {};
 		ExtCosTheta = {};
+		LightEmittance = {};
 		randomNo = {};
 
 		rayHitNormal = {};
@@ -132,6 +135,10 @@ struct Paths {
 
 		err = cudaMallocManaged(&LightCosTheta, totalPixels * sizeof(float));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
+		err = cudaMallocManaged(&LightEmittance, totalPixels * sizeof(float3));
+		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
+
 
 		err = cudaMallocManaged(&ExtCosTheta, totalPixels * sizeof(float));
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }

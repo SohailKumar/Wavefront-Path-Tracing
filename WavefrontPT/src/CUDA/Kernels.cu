@@ -154,7 +154,7 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
                 paths.rayHitMatID[idx] = i;
                 paths.rayHitMat[idx] = BLINNPHONG;
                 paths.rayHitPoint[idx] = hitPoint;
-                paths.rayHitNormal[idx] = normal;
+                paths.rayHitNormal[idx] = normalize(normal);
                 break;
             }
         }
@@ -168,7 +168,7 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
                 paths.rayHitMatID[idx] = i; // light index for light color
                 paths.rayHitMat[idx] = LIGHT;
                 paths.rayHitPoint[idx] = hitPoint; // unused
-                paths.rayHitNormal[idx] = normal; // unused
+                paths.rayHitNormal[idx] = normalize(normal); // unused
                 break;
             }
         }
@@ -182,7 +182,7 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
                 paths.rayHitMatID[idx] = sphereCount + i;
                 paths.rayHitMat[idx] = BLINNPHONG;
                 paths.rayHitPoint[idx] = hitPoint;
-                paths.rayHitNormal[idx] = normal;
+                paths.rayHitNormal[idx] = normalize(normal);
                 break;
             }
         }
@@ -251,6 +251,8 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
     // update 
     paths.rayCount[idx] += 1;
 
+
+
     paths.throughput[idx] = paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx] * paths.ExtCosTheta[idx];
     //paths.throughput[idx] = paths.LightBRDFColor[idx] / paths.LightBRDFColorPDF[idx];
 
@@ -316,7 +318,7 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
     queues.materialQueue[matQueueIdx][global_offset + my_rank] = idx;
 }
 
-__global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
+__global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materialQueueCount, uint32_t* MATBlinnPhongQueue, float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount, float3* lightColors, float* lightIntensity) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > materialQueueCount[BLINNPHONG-TYPES_BEFORE_BLINNPHONG])
         return;
@@ -326,7 +328,6 @@ __global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materia
 
     curandState localRandState = paths.randomNo[currPathIdx];
 
-    //paths.color[MATBlinnPhongQueue[idx]] = make_float4(0.56f, 0.0f, 0.26f, 1.0f);
     float3 normal = paths.rayHitNormal[currPathIdx];
     float pdf = 0.0f;
     float3 outDir = sampleBRDF<BLINNPHONG>(normal, localRandState, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx], pdf);
@@ -345,15 +346,17 @@ __global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materia
 	paths.rayDir[currPathIdx] = outDir;
 
 
+    // Create shadow ray:
     uint32_t lightIdx = int(curand_uniform(&localRandState) * lightCount);
 	float3 randomPointOnLight = getRandomPointOnTri(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx], localRandState);
     paths.lightRayDir[currPathIdx] = randomPointOnLight - paths.rayOgn[currPathIdx];
     paths.LightBRDFColor[currPathIdx] = evaluateBRDF<BLINNPHONG>(normal, paths.lightRayDir[currPathIdx], inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]);
 	paths.LightBRDFColorPDF[currPathIdx] = getDiffusePDF(normal, paths.lightRayDir[currPathIdx]);
-	paths.LightSelectPDF[currPathIdx] = 1.0f / lightCount * getProbabilityOfPointOnTriangle(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx]);
+	paths.LightSelectPDF[currPathIdx] = 1.0f / lightCount * getProbabilityOfPointOnTriangle(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx]) * getGeometricFactor(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx], randomPointOnLight);
 	paths.LightCosTheta[currPathIdx] = max(0.0f, dot(paths.lightRayDir[currPathIdx], normal));
-    // Add to shadowRay Queue
-    offset = atomicAdd(queues.shadowRayQueueCount, 1);
+	paths.LightEmittance[currPathIdx] = lightColors[lightIdx] * lightIntensity[lightIdx];
+
+    offset = atomicAdd(queues.shadowRayQueueCount, 1);        // Add to shadowRay queue
     queues.shadowRayQueue[offset] = currPathIdx;
 
 
