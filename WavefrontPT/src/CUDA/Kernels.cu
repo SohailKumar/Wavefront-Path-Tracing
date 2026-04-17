@@ -121,31 +121,33 @@ __global__ void cuda_GenerateCameraRays(Paths paths, Queues queues, CameraData c
     paths.rayCount[idx] = 0; // first time this ray hits an object, it gets updated to 1 bounces
     paths.sampled[idx] = false;
     paths.rayHitMat[idx] = NO_HIT;
-	paths.rayHitMatID[idx] = 0;
+    paths.rayHitMatID[idx] = 0;
 
-	paths.lightRayDir[idx] = make_float3(0.0f, 0.0f, 0.0f);
+    paths.lightRayDir[idx] = make_float3(0.0f, 0.0f, 0.0f);
 
     paths.ExtBRDFColor[idx] = make_float3(1.0f, 1.0f, 1.0f);
     paths.ExtBRDFColorPDF[idx] = 1.0f;
     paths.ExtCosTheta[idx] = 1.0f;
 
-	paths.LightBRDFColor[idx] = make_float3(1.0f, 1.0f, 1.0f);
+    paths.LightBRDFColor[idx] = make_float3(1.0f, 1.0f, 1.0f);
     paths.LightBRDFColorPDF[idx] = 1.0f;
-	paths.LightSelectPDF[idx] = 1.0f;
-	paths.LightCosTheta[idx] = 0.0f;
-	paths.LightEmittance[idx] = make_float3(0.0f, 0.0f, 0.0f);
-	paths.rayHitNormal[idx] = make_float3(0.0f, 0.0f, 0.0f);
-	paths.rayHitPoint[idx] = make_float3(0.0f, 0.0f, 0.0f);
-    /////////
-    
+    paths.LightSelectPDF[idx] = 1.0f;
+    paths.LightCosTheta[idx] = 0.0f;
+    paths.LightEmittance[idx] = make_float3(0.0f, 0.0f, 0.0f);
+    paths.rayHitNormal[idx] = make_float3(0.0f, 0.0f, 0.0f);
+    paths.rayHitPoint[idx] = make_float3(0.0f, 0.0f, 0.0f);
+    ////////
+
     //paths.randomSeed = 
     //curand_init(1, id, )
     curand_init(RANDOM_SEED + frameCount, idx, 0, &paths.randomNo[idx]);
 
-    // Increase extension queue count
-    int offset = atomicAdd(queues.extensionRayQueueCount, 1);
-    // Add to extensionRayQueue
-	queues.extensionRayQueue[offset] = idx;
+    //if ((idx < ((width * height) / 2 ) + 80000) && (idx > (((width * height) / 2 ) - 200000))) {
+        // Increase extension queue count
+        int offset = atomicAdd(queues.extensionRayQueueCount, 1);
+        // Add to extensionRayQueue
+        queues.extensionRayQueue[offset] = idx;
+    //}
 }
 
 __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
@@ -212,10 +214,10 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
 
 __global__ void cuda_ShadowRayIntersection(Paths paths, Queues queues, uint32_t maxPaths, float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount) {
     size_t threadidx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (threadidx >= *queues.extensionRayQueueCount)
+    if (threadidx >= *queues.shadowRayQueueCount)
         return;
 
-    size_t idx = queues.extensionRayQueue[threadidx];
+    size_t idx = queues.shadowRayQueue[threadidx];
 
     bool intersect = 0;
 
@@ -262,14 +264,17 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;
+    int width = 1280;
+    int height = 720;
 
     // update 
     paths.rayCount[idx] += 1;
 
-
-	float MISWeightLight = paths.LightSelectPDF[idx] / (paths.LightSelectPDF[idx] + paths.LightBRDFColorPDF[idx]);
-    paths.color[idx] += make_float4(paths.throughput[idx] * paths.LightEmittance[idx] * paths.LightBRDFColor[idx] / paths.LightSelectPDF[idx] * paths.LightCosTheta[idx] * MISWeightLight);
-
+    if (paths.rayCount[idx] > 1)
+    {
+        float MISWeightLight = paths.LightSelectPDF[idx] / (paths.LightSelectPDF[idx] + paths.LightBRDFColorPDF[idx]);
+        paths.color[idx] += make_float4(paths.throughput[idx] * paths.LightEmittance[idx] * paths.LightBRDFColor[idx] / paths.LightSelectPDF[idx] * paths.LightCosTheta[idx] * MISWeightLight);
+    }
     paths.throughput[idx] *= paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx] * paths.ExtCosTheta[idx];
     //paths.throughput[idx] = paths.LightBRDFColor[idx] / paths.LightBRDFColorPDF[idx];
 
@@ -296,6 +301,7 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
     // Ray lives!
 
     int matTypeID = paths.rayHitMat[idx];
+    int matHitMatID = paths.rayHitMatID[idx];
 
     if (matTypeID == LIGHT) {
         // hit light: set color and kill

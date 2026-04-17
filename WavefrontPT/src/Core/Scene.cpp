@@ -151,15 +151,28 @@ void Scene::CreateScene()
 	err = cudaMallocManaged(reinterpret_cast<void**>(&lightIntensity), lightCount * sizeof(float));
 	if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 
-	lightTriA[0] = make_float3(-2, 3, 0);
-	lightTriB[0] = make_float3(-2, 3, -15);
-	lightTriC[0] = make_float3(2, 3, 0);
-	lightColors[0] = make_float3(1.0f, 1.0f, 1.0f);
-	lightIntensity[0] = 200.0f;
 
-	lightTriA[1] = make_float3(2, 3, 0);
-	lightTriB[1] = make_float3(-2, 3, -15);
-	lightTriC[1] = make_float3(2, 3, -15);
+	lightTriA[0] = make_float3(-4, 3, -3);
+	lightTriB[0] = make_float3(-4, 3, -7);
+	lightTriC[0] = make_float3(4, 3, -3);
+	lightColors[0] = make_float3(1.0f, 1.0f, 1.0f);
+	lightIntensity[0] = 50.0f;
+
+	lightTriA[1] = make_float3(4, 3, -3);
+	lightTriB[1] = make_float3(-4, 3, -7);
+	lightTriC[1] = make_float3(4, 3, -7);
 	lightColors[1] = make_float3(1.0f, 1.0f, 1.0f);
-	lightIntensity[1] = 200.0f;
+	lightIntensity[1] = 50.0f;
+
+	//lightTriA[0] = make_float3(-2, 3, 0);
+	//lightTriB[0] = make_float3(-2, 3, -15);
+	//lightTriC[0] = make_float3(2, 3, 0);
+	//lightColors[0] = make_float3(1.0f, 1.0f, 1.0f);
+	//lightIntensity[0] = 10.0f;
+
+	//lightTriA[1] = make_float3(2, 3, 0);
+	//lightTriB[1] = make_float3(-2, 3, -15);
+	//lightTriC[1] = make_float3(2, 3, -15);
+	//lightColors[1] = make_float3(1.0f, 1.0f, 1.0f);
+	//lightIntensity[1] = 10.0f;
 }

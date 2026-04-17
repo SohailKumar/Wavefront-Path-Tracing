@@ -10,8 +10,8 @@ Timer timer;
 Timer fpsTimer;
 //#define TIMER_ANALYSIS
 
-#define WIDTH = 1280
-#define HEIGHT = 7200.
+//#define WIDTH = 1280
+//#define HEIGHT = 720
 
 
 void CUDAChecks() {
@@ -56,12 +56,6 @@ inline std::wstring ToWide(const char* str) {
     return wstr;
 }
 
-__inline__ float getProbabilityOfPointOnTriangleA(float3 v0, float3 v1, float3 v2)
-{
-    float area = 0.5 * abs(v0.x * (v1.y - v2.y) + v1.x * (v2.y - v0.y) + v2.x * (v0.y - v1.y));
-    return area;
-}
-
 int WINAPI wWinMain(
     _In_ HINSTANCE hInst,
     _In_ HINSTANCE hInstPrev,
@@ -87,8 +81,10 @@ int WINAPI wWinMain(
         GraphicsDx11::InitTexturesAndRegisterWithCUDA();
 
         //Init Scene and Renderer
-        Camera cam = Camera(float3(0, 0.5, 10), float3(0, 0.5, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
-		Scene scene = Scene(cam);
+        Camera cam = Camera(float3(0, 0.5, 20), float3(0, 0.7, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
+        //Camera cam = Camera(float3(24, 1, -5), float3(0, 1, -5), 3.5555, 2, Window::GetWidth(), Window::GetHeight()); // sideview
+        //Camera cam = Camera(float3(3, -0.8, -5), float3(1, -1, -5), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
+        Scene scene = Scene(cam);
 		Renderer rendererBegin = Renderer(Window::GetWidth(), Window::GetHeight());
 		
         App::CreateApp(rendererBegin, scene);
@@ -99,9 +95,6 @@ int WINAPI wWinMain(
 #if defined(DEBUG) | defined(_DEBUG)
         std::wcout << "\n\n";
 #endif
-
-		float area = getProbabilityOfPointOnTriangleA(make_float3(-2, 0, 0), make_float3(0, 2, 0), make_float3(2, 0, 0));
-
 
         // Game Loop
         Window::Update(GraphicsDx11::frameCount);
