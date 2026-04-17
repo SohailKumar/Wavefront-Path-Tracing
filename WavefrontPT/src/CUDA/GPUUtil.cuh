@@ -61,23 +61,33 @@ __device__ __inline__ float3 getRandomPointOnTri(float3 v0, float3 v1, float3 v2
     float r1 = sqrtf(curand_uniform(&randState));
     float r2 = curand_uniform(&randState);
     float u = 1 - r1;
-    float v = r1 * (1 - r2);
-    float w = r1 * r2;
+    float v = r1 * r2;
+    float w = (1 - u - v);
     return u * v0 + v * v1 + w * v2;
 }
 __device__ __inline__ float getProbabilityOfPointOnTriangle(float3 v0, float3 v1, float3 v2)
 {
-    float area =  0.5 * abs(v0.x * (v1.y - v2.y) + v1.x * (v2.y - v0.y) + v2.x * (v0.y - v1.y));
+    //float area =  0.5 * abs(v0.x * (v1.y - v2.y) + v1.x * (v2.y - v0.y) + v2.x * (v0.y - v1.y));
+	float3 vec1 = v1 - v0;
+	float3 vec2 = v2 - v0;
+    float area = 0.5 * length(cross(vec1, vec2));
     return (1 / area);
 }
 // Geometric factor for direct lighting: Converts area PDF to solid angle PDF
-__device__ __inline__ float getGeometricFactor(float3 v0, float3 v1, float3 v2, float3 randomPointOnLight) 
+__device__ __inline__ float getGeometricFactor(float3 v0, float3 v1, float3 v2, float3 randomPointOnLight, float3 ogn) 
 {
     float3 rNormal = normalize(cross(v1 - v0, v2 - v0));
-    float3 lightDir = normalize(randomPointOnLight - v0); // light direction from surface to light
+    float3 lightDir = normalize(ogn - randomPointOnLight); // light direction fromlight to surface 
     float cosThetaPrime = max(0.0f, dot(rNormal, lightDir));
-    float distanceSquared = dot(randomPointOnLight - v0, randomPointOnLight - v0);
+    float distanceSquared = dot(ogn - randomPointOnLight, ogn - randomPointOnLight);
 	return distanceSquared / cosThetaPrime;
+}
+__device__ __inline__ float getGeometricFactor(float3 lightNormal, float3 randomPointOnLight, float3 ogn)
+{
+    float3 lightDir = normalize(ogn - randomPointOnLight); // light direction fromlight to surface 
+    float cosThetaPrime = max(0.0f, dot(lightNormal, lightDir));
+    float distanceSquared = dot(ogn - randomPointOnLight, ogn - randomPointOnLight);
+    return distanceSquared / cosThetaPrime;
 }
 
 

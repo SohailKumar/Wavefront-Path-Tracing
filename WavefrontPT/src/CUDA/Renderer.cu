@@ -21,15 +21,16 @@ void Renderer::Initialize(Scene &scene)
 
 void Renderer::IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t pitch, int frameCount, int bounces)
 {
+    bounces = 1;
     GenerateCameraRays(cam.camDetails, frameCount);
     ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
-    LogicKernel(scene.lightColors, scene.lightIntensity);
+    LogicKernel(scene.lightColors, scene.lightIntensity, scene.lightTriA, scene.lightTriB, scene.lightTriC);
 
     for (int i = 0; i < bounces; i++) {
         RunMaterialShaders(scene.albedoDiffuse, scene.albedoSpecular, scene.shininess, scene.sphereCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount, scene.lightColors, scene.lightIntensity);
         ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
         ShadowRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
-        LogicKernel(scene.lightColors, scene.lightIntensity);
+        LogicKernel(scene.lightColors, scene.lightIntensity, scene.lightTriA, scene.lightTriB, scene.lightTriC);
 	}
     PostProcess(surface, pitch, frameCount, accumulationBuffer);
 
@@ -100,12 +101,12 @@ void Renderer::ShadowRayIntersectionKernel(float* sphereRadii, float3* sphereCen
     }
 }
 
-void Renderer::LogicKernel(float3* lightColors, float* lightIntensity)
+void Renderer::LogicKernel(float3* lightColors, float* lightIntensity, float3* lightTriA, float3* lightTriB, float3* lightTriC)
 {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_LogicKernel <<<gridSize, blockSize >>> (paths, maxPaths, queues, lightColors, lightIntensity);
+    cuda_LogicKernel <<<gridSize, blockSize >>> (paths, maxPaths, queues, lightColors, lightIntensity, lightTriA, lightTriB, lightTriC);
 
     error = cudaGetLastError();
     if (error != cudaSuccess) {

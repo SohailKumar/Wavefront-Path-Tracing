@@ -115,14 +115,29 @@ __global__ void cuda_GenerateCameraRays(Paths paths, Queues queues, CameraData c
 
     // Initialize other path variables
     // MOVE TO ITS OWN KERNEL IF REGENERATING RAYS
+    paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+    paths.throughput[idx] = make_float3(1.0f, 1.0f, 1.0f);
+
     paths.rayCount[idx] = 0; // first time this ray hits an object, it gets updated to 1 bounces
     paths.sampled[idx] = false;
     paths.rayHitMat[idx] = NO_HIT;
+	paths.rayHitMatID[idx] = 0;
+
+	paths.lightRayDir[idx] = make_float3(0.0f, 0.0f, 0.0f);
+
     paths.ExtBRDFColor[idx] = make_float3(1.0f, 1.0f, 1.0f);
     paths.ExtBRDFColorPDF[idx] = 1.0f;
     paths.ExtCosTheta[idx] = 1.0f;
-    paths.throughput[idx] = make_float3(1.0f, 1.0f, 1.0f);
 
+	paths.LightBRDFColor[idx] = make_float3(1.0f, 1.0f, 1.0f);
+    paths.LightBRDFColorPDF[idx] = 1.0f;
+	paths.LightSelectPDF[idx] = 1.0f;
+	paths.LightCosTheta[idx] = 0.0f;
+	paths.LightEmittance[idx] = make_float3(0.0f, 0.0f, 0.0f);
+	paths.rayHitNormal[idx] = make_float3(0.0f, 0.0f, 0.0f);
+	paths.rayHitPoint[idx] = make_float3(0.0f, 0.0f, 0.0f);
+    /////////
+    
     //paths.randomSeed = 
     //curand_init(1, id, )
     curand_init(RANDOM_SEED + frameCount, idx, 0, &paths.randomNo[idx]);
@@ -167,8 +182,8 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
                 intersect = 1;
                 paths.rayHitMatID[idx] = i; // light index for light color
                 paths.rayHitMat[idx] = LIGHT;
-                paths.rayHitPoint[idx] = hitPoint; // unused
-                paths.rayHitNormal[idx] = normalize(normal); // unused
+                paths.rayHitPoint[idx] = hitPoint; // used for geometric facotr in MIS Weight
+				paths.rayHitNormal[idx] = normalize(normal); // used for geometric factor in MIS weight
                 break;
             }
         }
@@ -243,7 +258,7 @@ __global__ void cuda_ShadowRayIntersection(Paths paths, Queues queues, uint32_t 
 }
 
 
-__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, float3* lightColors, float* lightIntensity ) {
+__global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, float3* lightColors, float* lightIntensity, float3* lightTriA, float3* lightTriB, float3* lightTriC) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx > maxPaths)
         return;
@@ -252,11 +267,13 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
     paths.rayCount[idx] += 1;
 
 
+	float MISWeightLight = paths.LightSelectPDF[idx] / (paths.LightSelectPDF[idx] + paths.LightBRDFColorPDF[idx]);
+    paths.color[idx] += make_float4(paths.throughput[idx] * paths.LightEmittance[idx] * paths.LightBRDFColor[idx] / paths.LightSelectPDF[idx] * paths.LightCosTheta[idx] * MISWeightLight);
 
     paths.throughput[idx] *= paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx] * paths.ExtCosTheta[idx];
     //paths.throughput[idx] = paths.LightBRDFColor[idx] / paths.LightBRDFColorPDF[idx];
 
-    // Ray Termination: x bounces, no hit, hit light
+ //   // Ray Termination: x bounces, no hit, hit light
 	//if (paths.rayCount[idx] > 3) // start doing russian roulette after 3 bounces
  //   {
 	//	float maxVal = max(paths.throughput[idx].x, max(paths.throughput[idx].y, paths.throughput[idx].z));
@@ -272,17 +289,20 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
  //       }
 
  //       // Increase throughput for survivors
-	//	paths.throughput[idx] = paths.throughput[idx] / p;
+	//	paths.throughput[idx] = paths.throughput[idx] / p * 100;
  //       paths.randomNo[idx] = localRandState;
  //   }
-    
+ //   
     // Ray lives!
 
     int matTypeID = paths.rayHitMat[idx];
 
     if (matTypeID == LIGHT) {
         // hit light: set color and kill
-        paths.color[idx] = make_float4(paths.throughput[idx] * lightColors[paths.rayHitMatID[idx]] * lightIntensity[paths.rayHitMatID[idx]]);
+        float geometricFactor = getGeometricFactor(paths.rayHitNormal[idx], paths.rayHitPoint[idx], paths.rayOgn[idx]);
+		float MISWeightMat = paths.ExtBRDFColorPDF[idx] / (getProbabilityOfPointOnTriangle(lightTriA[paths.rayHitMatID[idx]], lightTriB[paths.rayHitMatID[idx]], lightTriC[paths.rayHitMatID[idx]]) * geometricFactor + paths.ExtBRDFColorPDF[idx]);
+		paths.color[idx] += make_float4(paths.throughput[idx] * lightColors[paths.rayHitMatID[idx]] * lightIntensity[paths.rayHitMatID[idx]] * MISWeightMat, 1.0f);
+        //paths.color[idx] = make_float4(paths.throughput[idx] * lightColors[paths.rayHitMatID[idx]] * lightIntensity[paths.rayHitMatID[idx]]);
         paths.sampled[idx] = true;
 		return;
     }
@@ -351,12 +371,22 @@ __global__ void cuda_MATBlinnPhong(Paths paths, Queues queues, uint32_t* materia
     // Create shadow ray:
     uint32_t lightIdx = int(curand_uniform(&localRandState) * lightCount);
 	float3 randomPointOnLight = getRandomPointOnTri(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx], localRandState);
-    paths.lightRayDir[currPathIdx] = randomPointOnLight - paths.rayOgn[currPathIdx];
-    paths.LightBRDFColor[currPathIdx] = evaluateBRDF<BLINNPHONG>(normal, paths.lightRayDir[currPathIdx], inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]);
-	paths.LightBRDFColorPDF[currPathIdx] = getDiffusePDF(normal, paths.lightRayDir[currPathIdx]);
-	paths.LightSelectPDF[currPathIdx] = 1.0f / lightCount * getProbabilityOfPointOnTriangle(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx]) * getGeometricFactor(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx], randomPointOnLight);
-	paths.LightCosTheta[currPathIdx] = max(0.0f, dot(paths.lightRayDir[currPathIdx], normal));
-	paths.LightEmittance[currPathIdx] = lightColors[lightIdx] * lightIntensity[lightIdx];
+    float3 lightRayDir = normalize(randomPointOnLight - paths.rayOgn[currPathIdx]);
+    float3 lightBRDFColor = evaluateBRDF<BLINNPHONG>(normal, lightRayDir, inDir, albedoDiffuse[matIdx], albedoSpecular[matIdx], shininess[matIdx]);
+	float lightBRDFColorPDF = getDiffusePDF(normal, lightRayDir);
+    float pointOnTriangle = getProbabilityOfPointOnTriangle(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx]);
+    float geometricFactor = getGeometricFactor(lightTriA[lightIdx], lightTriB[lightIdx], lightTriC[lightIdx], randomPointOnLight, paths.rayOgn[currPathIdx]);
+	float lightSelectPDF = 1.0f / lightCount * pointOnTriangle * geometricFactor;
+	float lightCosTheta = max(0.0f, dot(lightRayDir, normal));
+	float3 lightEmittance = lightColors[lightIdx] * lightIntensity[lightIdx];
+
+    paths.lightRayDir[currPathIdx] = lightRayDir;
+    paths.LightBRDFColor[currPathIdx] = lightBRDFColor;
+	paths.LightBRDFColorPDF[currPathIdx] = lightBRDFColorPDF;
+	paths.LightSelectPDF[currPathIdx] = lightSelectPDF;
+	paths.LightCosTheta[currPathIdx] = lightCosTheta;
+	paths.LightEmittance[currPathIdx] = lightEmittance;
+
 
     offset = atomicAdd(queues.shadowRayQueueCount, 1);        // Add to shadowRay queue
     queues.shadowRayQueue[offset] = currPathIdx;
