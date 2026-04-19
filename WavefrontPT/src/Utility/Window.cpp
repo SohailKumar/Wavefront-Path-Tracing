@@ -47,19 +47,19 @@ LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
         PostQuitMessage(69); // Posts quit message to Message Queue. Returning with code 69.
         break;
     case WM_LBUTTONDOWN:
-        //const POINTS pt = MAKEPOINTS(lParam);
-        //std::wstring windowMsg = L"Point: ( " + std::to_wstring(pt.x) + L", " + std::to_wstring(pt.y) + L" )";
-        //SetWindowText(hWnd, windowMsg.c_str());
-
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < 1; ++i) {
             Update(++GraphicsDx11::frameCount);
         }
 
         SetWindowText(hWnd, std::to_wstring(GraphicsDx11::frameCount).c_str());
 
         break;
+    case WM_RBUTTONDOWN:
+        const POINTS pt = MAKEPOINTS(lParam);
+        std::wstring windowMsg = L"Point: ( " + std::to_wstring(pt.x) + L", " + std::to_wstring(pt.y) + L" )";
+        SetWindowText(hWnd, windowMsg.c_str());
+        break;
     }
-
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 

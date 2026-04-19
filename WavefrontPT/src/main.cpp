@@ -84,6 +84,7 @@ int WINAPI wWinMain(
         Camera cam = Camera(float3(0, 0.5, 20), float3(0, 0.7, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
         //Camera cam = Camera(float3(24, 1, -5), float3(0, 1, -5), 3.5555, 2, Window::GetWidth(), Window::GetHeight()); // sideview
         //Camera cam = Camera(float3(3, -0.8, -5), float3(1, -1, -5), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
+
         Scene scene = Scene(cam);
 		Renderer rendererBegin = Renderer(Window::GetWidth(), Window::GetHeight());
 		

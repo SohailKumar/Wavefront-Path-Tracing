@@ -8,7 +8,7 @@
 namespace cg = cooperative_groups;
 
 #define RANDOM_SEED 10
-#define EPSILON 0.001f
+#define EPSILON 0.01f
 
 __global__ void cuda_InitTraceRay(unsigned char* surface, int width, int height, size_t pitch, CameraData camData, float t)
 {
@@ -278,26 +278,26 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
     paths.throughput[idx] *= paths.ExtBRDFColor[idx] / paths.ExtBRDFColorPDF[idx] * paths.ExtCosTheta[idx];
     //paths.throughput[idx] = paths.LightBRDFColor[idx] / paths.LightBRDFColorPDF[idx];
 
- //   // Ray Termination: x bounces, no hit, hit light
-	//if (paths.rayCount[idx] > 3) // start doing russian roulette after 3 bounces
- //   {
-	//	float maxVal = max(paths.throughput[idx].x, max(paths.throughput[idx].y, paths.throughput[idx].z));
- //       float p = min(1.0f, maxVal);
+    // Ray Termination: x bounces, no hit, hit light
+	if (paths.rayCount[idx] > 3) // start doing russian roulette after 3 bounces
+    {
+		float maxVal = max(paths.throughput[idx].x, max(paths.throughput[idx].y, paths.throughput[idx].z));
+        float p = min(1.0f, maxVal);
 
- //       curandState localRandState = paths.randomNo[idx];
- //       // Throughput too low: kill ray  OR Russian Roulette : kill unlucky
- //       if( (maxVal < 0.05f) || (curand_uniform(&localRandState) > p) ){
- //           paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f); // throughput killed
- //           paths.sampled[idx] = true;
-	//		paths.randomNo[idx] = localRandState;
-	//		return;
- //       }
+        curandState localRandState = paths.randomNo[idx];
+        // Throughput too low: kill ray  OR Russian Roulette : kill unlucky
+        if( curand_uniform(&localRandState) > p ){
+            //paths.color[idx] = make_float4(0.0f, 0.0f, 0.0f, 1.0f); // throughput killed
+            paths.sampled[idx] = true;
+			paths.randomNo[idx] = localRandState;
+			return;
+        }
 
- //       // Increase throughput for survivors
-	//	paths.throughput[idx] = paths.throughput[idx] / p * 100;
- //       paths.randomNo[idx] = localRandState;
- //   }
- //   
+        // Increase throughput for survivors
+		paths.throughput[idx] = paths.throughput[idx] / p ;
+        paths.randomNo[idx] = localRandState;
+    }
+    
     // Ray lives!
 
     int matTypeID = paths.rayHitMat[idx];
@@ -313,12 +313,13 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
 		return;
     }
     if (matTypeID == EXIT_SCENE) {
-        paths.color[idx] = make_float4(0.02f, 0.02f, 0.02f, 1.0f); // throughput killed
+        //paths.color[idx] = make_float4(0.02f, 0.02f, 0.02f, 1.0f); // throughput killed
+        //paths.color[idx] = make_float4(PINK, 1.0f);
         paths.sampled[idx] = true;
         return;
     }
     if (matTypeID == NO_HIT) {
-        paths.color[idx] = make_float4(PINK, 1.0f);
+        //paths.color[idx] = make_float4(PINK, 1.0f);
         paths.sampled[idx] = true;
         return;
     }
@@ -412,6 +413,10 @@ __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t max
 
     if (x >= width || y >= height)
         return;
+
+    //if (x == 165 && y = 145) {
+    //    pixel
+    //}
 
     int idx = (y * width) + x;
 
