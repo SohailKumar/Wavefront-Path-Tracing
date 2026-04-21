@@ -16,7 +16,8 @@ Before building the project, ensure you have the following installed:
 
 - IDE: Visual Studio 2022
 
-- SDK: CUDA Toolkit 13.2 
+- SDK: CUDA Toolkit 13.2, Optix 8.x (Set OPTIX_PATH env. variable)
+    - NVIDIA OWL: https://github.com/NVIDIA/OWL
 
 - Drivers: NVIDIA GPU Drivers compatible with CUDA 13.2 or higher.
 
@@ -29,7 +30,7 @@ Ray Generation: Generates primary rays and stores them in a buffer.
 
 Intersection: Traverses the scene (BVH) to find hit points.
 
-Sorting: (Optional/Included) Rays are sorted by material type to ensure warp efficiency during shading.
+Sorting: Rays are sorted by material type to ensure warp efficiency during shading.
 
 Shading: Computes lighting, evaluates BSDFs, and generates secondary rays.
 
