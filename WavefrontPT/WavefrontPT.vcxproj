@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -35,9 +35,11 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="PropertySheet.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="PropertySheet.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -54,7 +56,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)external\tinygltf;$(SolutionDir)external\imgui;$(SolutionDir)external\imgui\backends;$(ProjectDir)src\Utility;$(ProjectDir)src\Core;$(ProjectDir)src\CUDA;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OPTIX_PATH)\include;$(SolutionDir)external\owl;$(SolutionDir)external\tinygltf;$(SolutionDir)external\imgui;$(SolutionDir)external\imgui\backends;$(ProjectDir)src\Utility;$(ProjectDir)src\Core;$(ProjectDir)src\OptiX;$(ProjectDir)src\CUDA;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Fast</FloatingPointModel>
@@ -64,13 +66,18 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;d3d11.lib;D3DCompiler.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;d3d11.lib;D3DCompiler.lib;dxgi.lib;owl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalCompilerOptions>/Zc:preprocessor</AdditionalCompilerOptions>
     </CudaCompile>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(OWLBuild)Debug\owl.dll" "$(OutDir)"
+xcopy /y /d "$(OWLBuild)Debug\owl.pdb" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -79,7 +86,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)external\tinygltf;$(SolutionDir)external\imgui;$(SolutionDir)external\imgui\backends;$(ProjectDir)src\Utility;$(ProjectDir)src\Core;$(ProjectDir)src\CUDA;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OPTIX_PATH)\include;$(SolutionDir)external\owl;$(SolutionDir)external\tinygltf;$(SolutionDir)external\imgui;$(SolutionDir)external\imgui\backends;$(ProjectDir)src\Utility;$(ProjectDir)src\Core;$(ProjectDir)src\OptiX;$(ProjectDir)src\CUDA;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <FloatingPointModel>Fast</FloatingPointModel>
@@ -91,12 +98,16 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;d3d11.lib;D3DCompiler.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;d3d11.lib;D3DCompiler.lib;dxgi.lib;owl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <AdditionalCompilerOptions>/Zc:preprocessor</AdditionalCompilerOptions>
     </CudaCompile>
+    <PostBuildEvent>
+      <Command>xcopy /y /d "$(OWLBuild)Release\owl.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="src\CUDA\GPUUtil.cuh" />
@@ -115,7 +126,9 @@
     <ClCompile Include="src\imgui\imgui_tables.cpp" />
     <ClCompile Include="src\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\OptiX\deviceCode.cpp" />
     <ClCompile Include="src\Utility\GraphicsDx11.cpp" />
+    <ClCompile Include="src\OptiX\OWLHelper.cpp" />
     <ClCompile Include="src\Utility\timer.cpp" />
     <ClCompile Include="src\Utility\Window.cpp" />
   </ItemGroup>
@@ -125,8 +138,10 @@
     <ClInclude Include="src\Core\Scene.h" />
     <ClInclude Include="src\CUDA\Renderer.h" />
     <ClInclude Include="src\CUDA\Structs.cuh" />
+    <ClInclude Include="src\OptiX\deviceCode.h" />
     <ClInclude Include="src\Utility\GraphicsDx11.h" />
     <ClInclude Include="src\CUDA\Kernels.cuh" />
+    <ClInclude Include="src\OptiX\OWLHelper.h" />
     <ClInclude Include="src\Utility\Timer.h" />
     <ClInclude Include="src\Utility\helper_math.h" />
     <ClInclude Include="src\Utility\Window.h" />

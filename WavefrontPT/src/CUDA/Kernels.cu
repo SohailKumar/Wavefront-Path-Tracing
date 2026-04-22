@@ -446,10 +446,14 @@ __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t max
         accumulationBuffer[idx].y += paths.color[idx].y;
         accumulationBuffer[idx].z += paths.color[idx].z;
         accumulationBuffer[idx].w += paths.color[idx].w;
-		pixel[0] = (accumulationBuffer[idx].x) / (frameCount+1);
-        pixel[1] = (accumulationBuffer[idx].y) / (frameCount+1);
-        pixel[2] = (accumulationBuffer[idx].z) / (frameCount+1);
-		pixel[3] = (accumulationBuffer[idx].w) / (frameCount+1);
+		//pixel[0] = (accumulationBuffer[idx].x) / (frameCount+1);
+  //      pixel[1] = (accumulationBuffer[idx].y) / (frameCount+1);
+  //      pixel[2] = (accumulationBuffer[idx].z) / (frameCount+1);
+		//pixel[3] = (accumulationBuffer[idx].w) / (frameCount+1);
+        pixel[0] = paths.color[idx].x;
+		pixel[1] = paths.color[idx].y;
+		pixel[2] = paths.color[idx].z;
+		pixel[3] = paths.color[idx].w;
     }
 }
 

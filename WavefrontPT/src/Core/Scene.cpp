@@ -2,6 +2,7 @@
 #include <cuda_runtime_api.h>
 #include <exception>
 #include <vector_functions.h>
+#include <owl.h>
 
 void Scene::CreateScene()
 {
@@ -155,14 +156,14 @@ void Scene::CreateScene()
 	lightTriA[0] = make_float3(-4, 3, -3);
 	lightTriB[0] = make_float3(-4, 3, -7);
 	lightTriC[0] = make_float3(4, 3, -3);
-	lightColors[0] = make_float3(1.0f, 1.0f, 1.0f);
-	lightIntensity[0] = 50.0f;
+	lightColors[0] = make_float3(1.0f, 0.75f, 0.1f);
+	lightIntensity[0] = 30.0f;
 
 	lightTriA[1] = make_float3(4, 3, -3);
 	lightTriB[1] = make_float3(-4, 3, -7);
 	lightTriC[1] = make_float3(4, 3, -7);
-	lightColors[1] = make_float3(1.0f, 1.0f, 1.0f);
-	lightIntensity[1] = 50.0f;
+	lightColors[1] = make_float3(1.0f, 0.75f, 0.1f);
+	lightIntensity[1] = 30.0f;
 
 	//lightTriA[0] = make_float3(-2, 3, 0);
 	//lightTriB[0] = make_float3(-2, 3, -15);
@@ -175,4 +176,9 @@ void Scene::CreateScene()
 	//lightTriC[1] = make_float3(2, 3, -15);
 	//lightColors[1] = make_float3(1.0f, 1.0f, 1.0f);
 	//lightIntensity[1] = 10.0f;
+}
+
+void Scene::MoveSphere(float t)
+{
+	sphereCenters[0].x = 2.0f * cosf(t);
 }

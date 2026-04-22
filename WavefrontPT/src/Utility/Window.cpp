@@ -20,6 +20,8 @@ bool Window::IsMinimized() { return _isMinimized; }
 
 void Window::Update(int frameCount) {
     {
+
+
         GraphicsDx11::ClearBuffer(0.1, 0.0, 0.2);
 #if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
         std::wcout << "\tClear Buffer: " << updateTimer.GetStringTime(true) << std::endl;
@@ -47,7 +49,7 @@ LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
         PostQuitMessage(69); // Posts quit message to Message Queue. Returning with code 69.
         break;
     case WM_LBUTTONDOWN:
-        for (int i = 0; i < 1; ++i) {
+        for (int i = 0; i < 100; ++i) {
             Update(++GraphicsDx11::frameCount);
         }
 

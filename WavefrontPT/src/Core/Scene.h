@@ -40,5 +40,6 @@ public:
 	}
 
 	void CreateScene();
+	void MoveSphere(float t);
 
 };

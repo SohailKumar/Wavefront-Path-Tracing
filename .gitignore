@@ -1,3 +1,6 @@
+external
+libs
+
 *.i
 *.ii
 *.gpu

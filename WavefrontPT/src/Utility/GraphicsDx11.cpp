@@ -340,6 +340,8 @@ void GraphicsDx11::CUDARender(int frameCount)
 		static float t = 0.0f;
 		cudaError_t err = cudaSuccess;
 
+		App::GetScene().MoveSphere(t);
+
 		Renderer* renderer = &App::GetRenderer();
 
 		//////////////////////////////////////////
@@ -359,7 +361,7 @@ void GraphicsDx11::CUDARender(int frameCount)
 		err = cudaDeviceSynchronize();
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 		
-		t +=0.00f;
+		t +=0.1f;
 	}
 
 #if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)
