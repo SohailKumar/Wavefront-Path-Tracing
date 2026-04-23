@@ -2,11 +2,6 @@
 #include <exception>
 #include <curand_kernel.h>
 
-struct Ray {
-	float3 ogn;
-	float3 dir;
-};
-
 #define PINK float3(1.0f, 0.0f, 1.0f)
 #define TYPES_BEFORE_BLINNPHONG 3
 

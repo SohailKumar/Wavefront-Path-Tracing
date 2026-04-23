@@ -165,7 +165,7 @@ __global__ void cuda_ExtensionRayIntersection(Paths paths, Queues queues, uint32
 
     // check spheres
     if (!intersect) {
-        for (uint32_t i = 0; i < sphereCount; ++i) {
+        for (int i = sphereCount-1; i >= 0; --i) {
             if (sphereIntersect(paths.rayOgn[idx], paths.rayDir[idx], sphereCenters[i], sphereRadii[i], hitPoint, normal)) {
                 intersect = 1;
                 paths.rayHitMatID[idx] = i;
@@ -308,6 +308,9 @@ __global__ void cuda_LogicKernel(Paths paths, uint32_t maxPaths, Queues queues, 
         float geometricFactor = getGeometricFactor(paths.rayHitNormal[idx], paths.rayHitPoint[idx], paths.rayOgn[idx]);
 		float MISWeightMat = paths.ExtBRDFColorPDF[idx] / (getProbabilityOfPointOnTriangle(lightTriA[paths.rayHitMatID[idx]], lightTriB[paths.rayHitMatID[idx]], lightTriC[paths.rayHitMatID[idx]]) * geometricFactor + paths.ExtBRDFColorPDF[idx]);
 		paths.color[idx] += make_float4(paths.throughput[idx] * lightColors[paths.rayHitMatID[idx]] * lightIntensity[paths.rayHitMatID[idx]] * MISWeightMat, 1.0f);
+        if (paths.rayCount[idx] == 1) {
+            paths.color[idx] += make_float4(paths.throughput[idx] * lightColors[paths.rayHitMatID[idx]] * lightIntensity[paths.rayHitMatID[idx]]);
+        }
         //paths.color[idx] = make_float4(paths.throughput[idx] * lightColors[paths.rayHitMatID[idx]] * lightIntensity[paths.rayHitMatID[idx]]);
         paths.sampled[idx] = true;
 		return;

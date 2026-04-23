@@ -2,6 +2,11 @@
 #include <numbers>
 #include "Structs.cuh"
 
+__host__ __inline__ void compactPaths(Paths *paths, int numPaths)
+{
+    // 
+}
+
 __device__ __inline__ float getLuminance(float3 color) 
 {
     return 0.2126f * color.x + 0.7152f * color.y + 0.0722f * color.z;

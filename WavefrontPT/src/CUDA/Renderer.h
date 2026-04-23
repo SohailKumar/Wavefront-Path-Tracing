@@ -17,6 +17,7 @@ public:
 	int gridSize;
 	int currWidth;
 	int currHeight;
+	uint32_t unsampledPaths;
 
 	// Never used default constructor
 	Renderer() {
@@ -29,6 +30,8 @@ public:
 		currHeight = 720;
 		paths = Paths();
 		queues = Queues(currWidth, currHeight);
+
+		unsampledPaths = 0;
 	}
 
 	Renderer(int width, int height) {
@@ -44,6 +47,7 @@ public:
 
 		paths = Paths();
 		queues = Queues(currWidth, currHeight);
+		unsampledPaths = 0;
 	}
 
 	void Initialize(Scene& scene);

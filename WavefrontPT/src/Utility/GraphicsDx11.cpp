@@ -361,7 +361,7 @@ void GraphicsDx11::CUDARender(int frameCount)
 		err = cudaDeviceSynchronize();
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
 		
-		t +=0.1f;
+		t +=0.05f;
 	}
 
 #if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)

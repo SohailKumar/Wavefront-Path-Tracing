@@ -10,10 +10,6 @@ Timer timer;
 Timer fpsTimer;
 //#define TIMER_ANALYSIS
 
-//#define WIDTH = 1280
-//#define HEIGHT = 720
-
-
 void CUDAChecks() {
     cudaDeviceProp deviceProp;
     // Get properties for device 0 (the first GPU)
@@ -81,8 +77,8 @@ int WINAPI wWinMain(
         GraphicsDx11::InitTexturesAndRegisterWithCUDA();
 
         //Init Scene and Renderer
-        Camera cam = Camera(float3(0,4,25), float3(0, 0.7, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
-        //Camera cam = Camera(float3(0, 0.5, 20), float3(0, 0.7, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
+        //Camera cam = Camera(float3(0,4,25), float3(0, 0.7, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
+        Camera cam = Camera(float3(0, 0.8, 20), float3(0, 0.9, 0), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
         //Camera cam = Camera(float3(24, 1, -5), float3(0, 1, -5), 3.5555, 2, Window::GetWidth(), Window::GetHeight()); // sideview
         //Camera cam = Camera(float3(3, -0.8, -5), float3(1, -1, -5), 3.5555, 2, Window::GetWidth(), Window::GetHeight());
 
