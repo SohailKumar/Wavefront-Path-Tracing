@@ -5,9 +5,27 @@ Developed for RIT Masters of Computer Science capstone project.
 Will eventually link to final report.
 
 :camera: Results 
+
 ![Convergence GIF](images/Convergence.gif)
 
 ![Moving Sphere](images/MovingSphere.gif)
+
+
+📖 Architecture Overview
+![Accurate Architectural Diagram](images/Architecture-Accurate.png)
+
+Unlike a "Megakernel" approach where one kernel handles the entire life of a ray, this project uses a Wavefront approach where work is divided amongst specialized kernels:
+
+Ray Generation: Generates primary rays and stores them in a buffer.
+
+Intersection: Traverses the scene to find hit points.
+
+Sorting: Rays are sorted by material type to ensure warp efficiency during shading.
+
+Shading: Computes lighting, evaluates BSDFs, and generates secondary rays.
+
+DirectX Interop: The final radiance buffer is copied to a ID3D11Texture2D using cudaGraphicsD3D11RegisterResource for immediate on-screen display.
+
 
 
 🚀 Some Features
@@ -29,18 +47,3 @@ Before building the project, ensure you have the following installed:
 - Drivers: NVIDIA GPU Drivers compatible with CUDA 13.2 or higher.
 
 - Hardware: An NVIDIA GPU with Compute Capability 7.0+ (recommended).
-
-📖 Architecture Overview
-![Accurate Architectural Diagram](images/Architecture-Accurate.png)
-
-Unlike a "Megakernel" approach where one kernel handles the entire life of a ray, this project uses a Wavefront approach where work is divided amongst specialized kernels:
-
-Ray Generation: Generates primary rays and stores them in a buffer.
-
-Intersection: Traverses the scene to find hit points.
-
-Sorting: Rays are sorted by material type to ensure warp efficiency during shading.
-
-Shading: Computes lighting, evaluates BSDFs, and generates secondary rays.
-
-DirectX Interop: The final radiance buffer is copied to a ID3D11Texture2D using cudaGraphicsD3D11RegisterResource for immediate on-screen display.
