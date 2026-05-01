@@ -9,9 +9,11 @@
 #include "App.h"
 #include "Timer.h"
 #include <iostream>
+#include "Structs.cuh"
 
 
 int GraphicsDx11::frameCount = 0;
+bool GraphicsDx11::moveSphere = true;
 
 //
 // Vertex and Pixel shaders here : VS() & PS()
@@ -342,14 +344,16 @@ void GraphicsDx11::CUDARender(int frameCount)
 		static float t = 0.0f;
 		cudaError_t err = cudaSuccess;
 
-		App::GetScene().MoveSphere(t);
+		if(moveSphere)
+			App::GetScene().MoveSphere(t);
+
 
 		Renderer* renderer = &App::GetRenderer();
 
 		//////////////////////////////////////////
 
 
-		renderer->IterateOneFrame(App::GetCamera(), App::GetScene(), Texture2D.cudaLinearMemory, Texture2D.pitch, frameCount, 0);
+		renderer->IterateOneFrame(App::GetCamera(), App::GetScene(), Texture2D.cudaLinearMemory, Texture2D.pitch, frameCount, moveSphere);
 
 
 		//App::GetRenderer().InitializeRays(Texture2D.cudaLinearMemory, Texture2D.pitch, App::GetCamera().camDetails, t);
@@ -362,8 +366,9 @@ void GraphicsDx11::CUDARender(int frameCount)
 
 		err = cudaDeviceSynchronize();
 		if (err != cudaSuccess) { throw std::exception(cudaGetErrorString(err)); }
-		
-		t +=0.05f;
+	
+		if(moveSphere)
+			t +=0.05f;
 	}
 
 #if (defined(DEBUG) | defined(_DEBUG)) && defined(TIMER_ANALYSIS)

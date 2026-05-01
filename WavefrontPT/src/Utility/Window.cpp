@@ -53,20 +53,37 @@ LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
         PostQuitMessage(69); // Posts quit message to Message Queue. Returning with code 69.
         break;
     case WM_LBUTTONDOWN:
-        for (int i = 0; i < 10; ++i) {
+        if (GraphicsDx11::moveSphere == true) {
+            GraphicsDx11::moveSphere = false;
+            GraphicsDx11::frameCount = 0;
+        }
+
+        for (int i = 0; i < 100; ++i) {
             fpsTimer.Mark();
             Window::Update(++GraphicsDx11::frameCount);
             float time = 1000/fpsTimer.Mark();
-            SetWindowText(hWnd, (std::to_wstring(GraphicsDx11::frameCount) + L" " + std::to_wstring(time)).c_str());
+            SetWindowText(
+                hWnd,
+                (std::to_wstring(GraphicsDx11::frameCount) + L" " + std::to_wstring(time) + L"\t - Converging").c_str()
+            );
 			//std::cout << time << ", ";
         }
 
         break;
     case WM_RBUTTONDOWN:
-        const POINTS pt = MAKEPOINTS(lParam);
-        std::wstring windowMsg = L"Point: ( " + std::to_wstring(pt.x) + L", " + std::to_wstring(pt.y) + L" )";
-        SetWindowText(hWnd, windowMsg.c_str());
-        break;
+        if (GraphicsDx11::moveSphere == false) {
+            GraphicsDx11::moveSphere = true;
+            GraphicsDx11::frameCount = 0;
+        }
+
+        for (int i = 0; i < 100; ++i) {
+            fpsTimer.Mark();
+            Window::Update(++GraphicsDx11::frameCount);
+            float time = 1000 / fpsTimer.Mark();
+            SetWindowText(hWnd, 
+                (std::to_wstring(GraphicsDx11::frameCount) + L" " + std::to_wstring(time) + + L"\t - Sphere Moving").c_str());
+            //std::cout << time << ", ";
+        }
     }
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }

@@ -52,14 +52,14 @@ public:
 
 	void Initialize(Scene& scene);
 
-	void IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t pitch, int frameCount, int bounces);
+	void IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t pitch, int frameCount, bool moveSphere);
 
 	void GenerateCameraRays(CameraData camData, int frameCount);
 	void ExtensionRayIntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount);
 	void ShadowRayIntersectionKernel(float* sphereRadii, float3* sphereCenters, uint32_t sphereCount, float3* planeTriA, float3* planeTriB, float3* planeTriC, uint32_t planeTriCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount);
 	void LogicKernel(float3* lightColors, float* lightIntensity, float3* lightTriA, float3* lightTriB, float3* lightTriC);
 	void RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular, float* shininess, uint32_t sphereCount, float3* lightTriA, float3* lightTriB, float3* lightTriC, uint32_t lightCount, float3* lightColors, float* lightIntensity);
-	void PostProcess(void* surface, size_t pitch, int frameCount, float4* accumulationBuffer);
+	void PostProcess(void* surface, size_t pitch, int frameCount, float4* accumulationBuffer, bool moveSphere);
 
 	void InitializeRays(void* surface, size_t pitch, CameraData camData, float t);
 	void TextureTest(void* surface, uint32_t width, uint32_t height, size_t pitch);

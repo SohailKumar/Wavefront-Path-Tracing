@@ -19,10 +19,10 @@ void Renderer::Initialize(Scene &scene)
 
 }
 
-void Renderer::IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t pitch, int frameCount, int bounces)
+void Renderer::IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t pitch, int frameCount, bool moveSphere)
 {
     //unsampledPaths = 0;
-    bounces = 10;
+    int bounces = 10;
     GenerateCameraRays(cam.camDetails, frameCount);
     ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
     LogicKernel(scene.lightColors, scene.lightIntensity, scene.lightTriA, scene.lightTriB, scene.lightTriC);
@@ -33,7 +33,7 @@ void Renderer::IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t 
         ShadowRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
         LogicKernel(scene.lightColors, scene.lightIntensity, scene.lightTriA, scene.lightTriB, scene.lightTriC);
 	}
-    PostProcess(surface, pitch, frameCount, accumulationBuffer);
+    PostProcess(surface, pitch, frameCount, accumulationBuffer, moveSphere);
 
     cudaError_t error = cudaSuccess;
     error = cudaMemsetAsync(queues.extensionRayQueueCount, 0, sizeof(uint32_t));
@@ -133,12 +133,11 @@ void Renderer::RunMaterialShaders(float3* albedoDiffuse, float3* albedoSpecular,
     }
 }
 
-void Renderer::PostProcess(void*  surface, size_t pitch, int frameCount, float4* accumulationBuffer) {
+void Renderer::PostProcess(void*  surface, size_t pitch, int frameCount, float4* accumulationBuffer, bool moveSphere) {
     uint32_t maxPaths = currWidth * currHeight;
     cudaError_t error = cudaSuccess;
 
-    cuda_PostProcessPathsAndWriteToSurface <<<imageGridSize, imageBlockSize >>> (paths, maxPaths, currWidth, currHeight,(unsigned char*)surface, accumulationBuffer, pitch, frameCount);
-
+    cuda_PostProcessPathsAndWriteToSurface <<<imageGridSize, imageBlockSize >>> (paths, maxPaths, currWidth, currHeight,(unsigned char*)surface, accumulationBuffer, pitch, frameCount, moveSphere);
     error = cudaGetLastError();
     if (error != cudaSuccess) {
         throw std::exception("cuda_kernel_texture_2d() failed to launch error = %d\n", error);

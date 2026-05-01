@@ -4,6 +4,12 @@ Developed for RIT Masters of Computer Science capstone project.
 
 Will eventually link to final report.
 
+:camera: Results 
+![Convergence GIF](images/Convergence.gif)
+
+![Moving Sphere](images/MovingSphere.gif)
+
+
 🚀 Some Features
 Wavefront Architecture: Minimizes SIMT divergence on the GPU by partitioning the ray-tracing pipeline into discrete kernels (RayGen, Intersection, Shading).
 

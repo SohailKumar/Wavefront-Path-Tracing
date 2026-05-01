@@ -5,6 +5,7 @@
 #include "Timer.h"
 #include "App.h"
 #include <iostream>
+#include "Structs.cuh"
 
 Timer timer;
 Timer fpsTimer;

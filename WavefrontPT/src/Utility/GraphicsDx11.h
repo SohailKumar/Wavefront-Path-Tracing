@@ -29,6 +29,7 @@ namespace GraphicsDx11 {
 	} Texture2D;
 
 	extern int frameCount;
+	extern bool moveSphere;
 
 	void Init(HWND  winHandle);
 	void ContinueInit();
