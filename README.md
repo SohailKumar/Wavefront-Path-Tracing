@@ -25,7 +25,7 @@ Before building the project, ensure you have the following installed:
 - Hardware: An NVIDIA GPU with Compute Capability 7.0+ (recommended).
 
 📖 Architecture Overview
-![Detailed Architectural Diagram](images/detailed.png)
+![Accurate Architectural Diagram](images/Architecture-Accurate.png)
 
 Unlike a "Megakernel" approach where one kernel handles the entire life of a ray, this project uses a Wavefront approach where work is divided amongst specialized kernels:
 
