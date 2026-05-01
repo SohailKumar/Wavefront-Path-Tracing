@@ -1,6 +1,7 @@
 #include "window.h"
 #pragma comment(linker, "/subsystem:windows")
 #include "timer.h"
+#include <iostream>
 
 namespace Window{
     //anonymous namespace for variables only accessible in this file
@@ -43,6 +44,7 @@ void Window::Update(int frameCount) {
 LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     Timer fpsTimer = Timer();
+
     switch (msg) {
     case WM_DESTROY:
         //Quit our program;
@@ -51,11 +53,12 @@ LRESULT Window::ProcessMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam
         PostQuitMessage(69); // Posts quit message to Message Queue. Returning with code 69.
         break;
     case WM_LBUTTONDOWN:
-        for (int i = 0; i < 200; ++i) {
+        for (int i = 0; i < 10; ++i) {
             fpsTimer.Mark();
-            Update(++GraphicsDx11::frameCount);
+            Window::Update(++GraphicsDx11::frameCount);
             float time = 1000/fpsTimer.Mark();
             SetWindowText(hWnd, (std::to_wstring(GraphicsDx11::frameCount) + L" " + std::to_wstring(time)).c_str());
+			//std::cout << time << ", ";
         }
 
         break;

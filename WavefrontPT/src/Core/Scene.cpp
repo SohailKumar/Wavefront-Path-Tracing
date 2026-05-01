@@ -159,14 +159,14 @@ void Scene::CreateScene()
 	lightTriC[0] = make_float3(3, 3.2, -1);
 	lightColors[0] = lightColor;
 	//lightColors[0] = make_float3(1.0f, 0.925f, 0.3f);
-	lightIntensity[0] = 10.0f;
+	lightIntensity[0] = 24.0f;
 
 	lightTriA[1] = make_float3(3, 3.2, -1);
 	lightTriB[1] = make_float3(-3, 3.2, -7);
 	lightTriC[1] = make_float3(3, 3.2, -7);
 	lightColors[1] = lightColor;
 	//lightColors[1] = make_float3(1.0f, 0.925f, 0.3f);
-	lightIntensity[1] = 10.0f;
+	lightIntensity[1] = 24.0f;
 
 	//lightTriA[0] = make_float3(-2, 3, 0);
 	//lightTriB[0] = make_float3(-2, 3, -15);

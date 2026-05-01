@@ -60,9 +60,9 @@ int WINAPI wWinMain(
 {
     timer = Timer();
 
-#if defined(DEBUG) | defined(_DEBUG)
+//#if defined(DEBUG) | defined(_DEBUG)
     Window::CreateConsoleWindow(500, 120, 32, 120);
-#endif
+//#endif
 
     const int width = 1280;
     const int height = 720;
@@ -95,9 +95,17 @@ int WINAPI wWinMain(
 #endif
 
         // Game Loop
-        Window::Update(GraphicsDx11::frameCount);
-        GraphicsDx11::frameCount += 1;
-		std::cout << "frame count" << GraphicsDx11::frameCount << std::endl;
+        Timer totalTimer = Timer();
+
+        for (int i = 0; i < 1; ++i) {
+            //fpsTimer.Mark();
+            Window::Update(++GraphicsDx11::frameCount);
+            float time = fpsTimer.Peek();
+            SetWindowText(Window::GetHandle(), (std::to_wstring(GraphicsDx11::frameCount) + L" " + std::to_wstring(time)).c_str());
+        }
+        //Window::Update(GraphicsDx11::frameCount);
+        //GraphicsDx11::frameCount += 1;
+		//std::cout << "frame count" << GraphicsDx11::frameCount << std::endl;
         //for (int i = 0; i < 5; i++) {
         //    if (const auto exitCode = Window::ProcessMessages()) {
         //        GraphicsDx11::Destroy();

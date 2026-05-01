@@ -28,7 +28,7 @@ namespace GraphicsDx11 {
 		int                       height;
 	} Texture2D;
 
-	static int frameCount = 0;
+	extern int frameCount;
 
 	void Init(HWND  winHandle);
 	void ContinueInit();

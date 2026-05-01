@@ -22,7 +22,7 @@ void Renderer::Initialize(Scene &scene)
 void Renderer::IterateOneFrame(Camera& cam, Scene& scene, void* surface, size_t pitch, int frameCount, int bounces)
 {
     //unsampledPaths = 0;
-    bounces = 6;
+    bounces = 10;
     GenerateCameraRays(cam.camDetails, frameCount);
     ExtensionRayIntersectionKernel(scene.sphereRadii, scene.sphereCenters, scene.sphereCount, scene.planeTriA, scene.planeTriB, scene.planeTriC, scene.planeTriCount, scene.lightTriA, scene.lightTriB, scene.lightTriC, scene.lightCount);
     LogicKernel(scene.lightColors, scene.lightIntensity, scene.lightTriA, scene.lightTriB, scene.lightTriC);

@@ -11,6 +11,8 @@
 #include <iostream>
 
 
+int GraphicsDx11::frameCount = 0;
+
 //
 // Vertex and Pixel shaders here : VS() & PS()
 //
@@ -346,8 +348,8 @@ void GraphicsDx11::CUDARender(int frameCount)
 
 		//////////////////////////////////////////
 
-		int bounces = 5;
-		renderer->IterateOneFrame(App::GetCamera(), App::GetScene(), Texture2D.cudaLinearMemory, Texture2D.pitch, frameCount, bounces);
+
+		renderer->IterateOneFrame(App::GetCamera(), App::GetScene(), Texture2D.cudaLinearMemory, Texture2D.pitch, frameCount, 0);
 
 
 		//App::GetRenderer().InitializeRays(Texture2D.cudaLinearMemory, Texture2D.pitch, App::GetCamera().camDetails, t);

@@ -7,7 +7,7 @@
 #include <cooperative_groups.h>
 namespace cg = cooperative_groups;
 
-#define RANDOM_SEED 10
+#define RANDOM_SEED 106
 #define EPSILON 0.01f
 
 __global__ void cuda_InitTraceRay(unsigned char* surface, int width, int height, size_t pitch, CameraData camData, float t)
@@ -425,24 +425,35 @@ __global__ void cuda_PostProcessPathsAndWriteToSurface(Paths paths, uint32_t max
 
     pixel = (float*)(surface + y * pitch) + 4 * x;
 
+    paths.color[idx].x = clamp(paths.color[idx].x, 0.0f, FLT_MAX);
+    paths.color[idx].y = clamp(paths.color[idx].y, 0.0f, FLT_MAX);
+    paths.color[idx].z = clamp(paths.color[idx].z, 0.0f, FLT_MAX);
+    paths.color[idx].w = clamp(paths.color[idx].w, 0.0f, FLT_MAX);
+
+
+    //float luminanceIn = getLuminance(make_float3(paths.color[idx].x, paths.color[idx].y, paths.color[idx].z));
+    //float luminanceOut = luminanceIn / (1 + luminanceIn);
+	//paths.color[idx] = paths.color[idx] * (luminanceOut / max(luminanceIn, 0.001));
+ //   paths.color[idx].w = 1.0f;
     paths.color[idx].x = paths.color[idx].x / (1 + paths.color[idx].x);
     paths.color[idx].y = paths.color[idx].y / (1 + paths.color[idx].y);
     paths.color[idx].z = paths.color[idx].z / (1 + paths.color[idx].z);
     paths.color[idx].w = paths.color[idx].w / (1 + paths.color[idx].w);
-	//paths.color[idx].x = clamp(paths.color[idx].x, 0.0f, 1.0f);
-	//paths.color[idx].y = clamp(paths.color[idx].y, 0.0f, 1.0f);
-	//paths.color[idx].z = clamp(paths.color[idx].z, 0.0f, 1.0f);
-	//paths.color[idx].w = clamp(paths.color[idx].w, 0.0f, 1.0f);
+
+	//paths.color[idx].x = clamp(paths.color[idx].x/2.5, 0.0f, 1.0f);
+	//paths.color[idx].y = clamp(paths.color[idx].y/2.5, 0.0f, 1.0f);
+	//paths.color[idx].z = clamp(paths.color[idx].z/2.5, 0.0f, 1.0f);
+	//paths.color[idx].w = clamp(paths.color[idx].w/2.5, 0.0f, 1.0f);
 
     if (frameCount == 0) {
+        accumulationBuffer[idx].x = paths.color[idx].x;
+        accumulationBuffer[idx].y = paths.color[idx].y;
+        accumulationBuffer[idx].z = paths.color[idx].z;
+        accumulationBuffer[idx].w = paths.color[idx].w;
         pixel[0] = paths.color[idx].x;
         pixel[1] = paths.color[idx].y;
         pixel[2] = paths.color[idx].z;
         pixel[3] = paths.color[idx].w;
-		accumulationBuffer[idx].x = paths.color[idx].x;
-		accumulationBuffer[idx].y = paths.color[idx].y;
-		accumulationBuffer[idx].z = paths.color[idx].z;
-		accumulationBuffer[idx].w = paths.color[idx].w;
     }
     else {
         accumulationBuffer[idx].x += paths.color[idx].x;
