@@ -12,6 +12,7 @@ Will eventually link to final report.
 
 
 📖 Architecture Overview
+
 ![Accurate Architectural Diagram](images/Architecture-Accurate.png)
 
 Unlike a "Megakernel" approach where one kernel handles the entire life of a ray, this project uses a Wavefront approach where work is divided amongst specialized kernels:
